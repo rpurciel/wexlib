@@ -15,6 +15,22 @@ def download_model(save_dir, year, month, day, hour, **kwargs):
     """
 	start_time = datetime.now()
 
+	if kwargs.get('verbose') == True:
+		verbose = True
+		print("INFO: VERBOSE mode turned ON")
+	else:
+		verbose = False
+
+	if kwargs.get('debug') == True:
+		debug = True
+		verbose = True
+		print("INFO: DEBUG mode turned ON")
+	else:
+		debug = False
+
+	if debug:
+		print("DEBUG: Kwargs passed:", kwargs)
+
 	elapsed_time = datetime.now() - start_time
 	return 1, elapsed_time.total_seconds(), dest_path
 
@@ -41,6 +57,22 @@ def plot_plan_view_model(file_path, save_dir, level, variables, points, **kwargs
              path to file
     """
 	start_time = datetime.now()
+
+	if kwargs.get('verbose') == True:
+		verbose = True
+		print("INFO: VERBOSE mode turned ON")
+	else:
+		verbose = False
+
+	if kwargs.get('debug') == True:
+		debug = True
+		verbose = True
+		print("INFO: DEBUG mode turned ON")
+	else:
+		debug = False
+
+	if debug:
+		print("DEBUG: Kwargs passed:", kwargs)
 
 	elapsed_time = datetime.now() - start_time
 	return 1, elapsed_time.total_seconds(), dest_path
@@ -75,6 +107,22 @@ def plot_cross_section_model(file_path, save_dir, start_point, end_point, variab
     """
 	start_time = datetime.now()
 
+	if kwargs.get('verbose') == True:
+		verbose = True
+		print("INFO: VERBOSE mode turned ON")
+	else:
+		verbose = False
+
+	if kwargs.get('debug') == True:
+		debug = True
+		verbose = True
+		print("INFO: DEBUG mode turned ON")
+	else:
+		debug = False
+
+	if debug:
+		print("DEBUG: Kwargs passed:", kwargs)
+
 	elapsed_time = datetime.now() - start_time
 	return 1, elapsed_time.total_seconds(), dest_path
 
@@ -90,6 +138,22 @@ def raob_csv_sounding_model(file_path, save_path, sounding_lat=DEFAULT_LAT, soun
     """
 
     start_time = datetime.now()
+
+    if kwargs.get('verbose') == True:
+		verbose = True
+		print("INFO: VERBOSE mode turned ON")
+	else:
+		verbose = False
+
+	if kwargs.get('debug') == True:
+		debug = True
+		verbose = True
+		print("INFO: DEBUG mode turned ON")
+	else:
+		debug = False
+
+	if debug:
+		print("DEBUG: Kwargs passed:", kwargs)
 
 	elapsed_time = datetime.now() - start_time
 	return 1, elapsed_time.total_seconds(), dest_path

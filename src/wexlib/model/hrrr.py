@@ -130,7 +130,7 @@ def plot_cross_section_hrrr(file_path, save_dir, start_point, end_point, variabl
     elapsed_time = datetime.now() - start_time
     return 1, elapsed_time.total_seconds(), dest_path
 
-def raob_csv_sounding_hrrr(file_path, save_path, sounding_lat=DEFAULT_LAT, sounding_lon=DEFAULT_LON):
+def raob_csv_sounding_hrrr(file_path, save_path, sounding_lat=DEFAULT_LAT, sounding_lon=DEFAULT_LON, **kwargs):
     """
     Generates a CSV for plotting in RAOB from input HRRR file.
 
@@ -147,9 +147,28 @@ def raob_csv_sounding_hrrr(file_path, save_path, sounding_lat=DEFAULT_LAT, sound
 
     start_time = datetime.now()
 
-    name = "HRRR"
+    if kwargs.get('verbose') == True:
+        verbose = True
+        print("INFO: VERBOSE mode turned ON")
+    else:
+        verbose = False
 
-    date = "2023-01-01 00:00:00"
+    if kwargs.get('debug') == True:
+        debug = True
+        verbose = True
+        print("INFO: DEBUG mode turned ON")
+    else:
+        debug = False
+
+    if debug:
+        print("DEBUG: Kwargs passed:", kwargs)
+
+    if sounding_lon < 0 :
+        sounding_lon += 360
+
+        if debug:
+            print("DEBUG: Sounding longitude corrected")
+            print(f"DEBUG: Original={sounding_lon - 360} New={sounding_lon}")
 
     ds = xr.open_dataset(file_path, engine='cfgrib',
                         backend_kwargs={'filter_by_keys':{'typeOfLevel': 'isobaricInhPa'},'errors':'ignore'})
@@ -264,23 +283,76 @@ def raob_csv_sounding_hrrr(file_path, save_path, sounding_lat=DEFAULT_LAT, sound
         
     main_df = main_df.round(decimals=2)
     elev = round(float(hgtsurface)) #Rounding surface elevation for dataframe
+
+    if kwargs.get('sounding_title'):
+        csv_name = kwargs.get('sounding_title')
+        file_name = date.replace(":","_").replace("-", "_") + "_" + csv_name + "_HRRR_RAOB.csv"
+    else:
+        csv_name = "UNNAMED SOUNDING"
+        file_name = date.replace(":","_").replace("-", "_") + "_HRRR_RAOB.csv"
     
     d = {0:['RAOB/CSV','DTG','LAT','LON','ELEV','MOISTURE','WIND','GPM','MISSING','RAOB/DATA','PRES'],
-         1:[name,date,latitude_float,longitude_float,elev,'TD','kts','MSL',-999,'','TEMP'],2:['','','N','W','m','','U/V','','','','TD'],3:['','','','','','','','','','','UU'],
+         1:[csv_name,date,latitude_float,longitude_float,elev,'TD','kts','MSL',-999,'','TEMP'],2:['','','N','W','m','','U/V','','','','TD'],3:['','','','','','','','','','','UU'],
          4:['','','','','','','','','','','VV'],5:['','','','','','','','','','','GPM']}
     df_2 = pd.DataFrame(data=d)
     
     main_df = pd.concat([df_2,main_df],axis=0,ignore_index=True) #Combines the RAOB Header Format with the sounding data
 
-    file_name = date.replace(":","_").replace(" ", "_") + "_RAOB.csv"
     dest_path = os.path.join(save_path, file_name)
 
     main_df.to_csv(dest_path, index=False, header=False)
 
-    print("Saved File: " + file_name + " to " + save_path)
+    if verbose:
+        print("FILE: Saved File: " + file_name + " to " + save_path)
 
     elapsed_time = datetime.now() - start_time
     return 1, elapsed_time.total_seconds(), dest_path
+
+def time_remaining_calc(tot_items, processed_items, proc_times_list):
+
+    if processed_items <= 1:
+        avg_time = 0
+    else:
+        avg_time = sum(proc_times_list) / len(proc_times_list)
+
+    time_remaining = (avg_time * (tot_items - processed_items))/3600 #in hours
+    tr_hours = time_remaining
+    tr_minutes = (time_remaining*60) % 60
+    tr_seconds = (time_remaining*3600) % 60
+
+    time_remaining_str = "{}:{}:{}".format(str(round(tr_hours)).zfill(2), str(round(tr_minutes)).zfill(2), str(round(tr_seconds)).zfill(2))
+
+    return time_remaining_str
+
+def total_time_calc(total_time_seconds):
+
+    t_hours = total_time_seconds/3600
+    t_minutes = (t_hours*60) % 60
+    t_seconds = (t_hours*3600) % 60
+
+    time_str = "{}:{}:{}".format(str(round(t_hours)).zfill(2), str(round(t_minutes)).zfill(2), str(round(t_seconds)).zfill(2))
+
+    return time_str
+
+if __name__ == "__main__":
+
+    input_file_path = "/Users/rpurciel/Documents/Maritime Heli N311MH/HRRR (not ak)/"
+
+    input_save_dir = input_file_path
+
+    lat = 70.649215
+
+    lon = -158.561911
+
+    files = sorted(glob.glob(input_file_path + "*.grib2"))
+
+    for file in files:
+
+        print(file[-12:-9])
+
+        raob_csv_sounding_hrrr(file, input_save_dir, lat, lon, sounding_title=file[-12:-9])
+
+
 
 
 

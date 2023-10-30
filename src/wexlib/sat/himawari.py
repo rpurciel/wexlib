@@ -4,6 +4,7 @@ import glob
 from datetime import datetime, timedelta
 import re
 import glob
+import warnings
 
 import xarray as xr
 import numpy as np
@@ -14,26 +15,31 @@ import matplotlib.pyplot as plt
 import cartopy 
 import cartopy.crs as crs
 import cartopy.crs as ccrs
-import cartopy.feature as cfeat
+import cartopy.feature as cfeature
 import cartopy.io.shapereader as shpreader
 from cartopy.feature import NaturalEarthFeature
 import s3fs
+from satpy import Scene
+from pyresample.utils import get_area_def
 
-#from ..processing_util import calc
+warnings.filterwarnings('ignore')
 
 #global params
-DEF_BBOX = [-126.3, -65.2, 24.1, 50.8] #CONUS - WESN
+DEF_BBOX = [50.8, -65.2, 24.1, -126.3] #CONUS - NESW
 
-DEF_CORRECT_CLIP = True
-DEF_CORRECT_GAMMA = True
-DEF_GAMMA = 2.2
+DEF_VMIN = None
+DEF_VMAX = None
 
 DEF_GEOG_VISIBLE = True
 DEF_GEOG_DRAW_STATES = True
 DEF_GEOG_DRAW_COASTLINES = True
+DEF_GEOG_DRAW_BORDERS = True
+DEF_GEOG_DRAW_WATER = False
 
 DEF_COLORBAR_VISIBLE = False
 DEF_COLORBAR_LABEL = 'Pixel Brightness'
+DEF_COLORBAR_SHRINK_FACT = 0.5
+DEF_COLORBAR_LOCATION = 'inside'
 
 DEF_POINT_COLOR = 'black'
 DEF_POINT_SIZE = 8
@@ -46,17 +52,39 @@ DEF_POINT_LABEL_YOFFSET = 0
 
 DEF_FILE_DPI = 300
 
+DEF_TRUE_COLOR_PALLETE = None
+DEF_NATURAL_COLOR_PALLETE = None
+DEF_DAY_CLOUD_PHASE_PALLETE = None
+DEF_DAY_LAND_CLOUD_FIRE_PALLETE = None
+DEF_NT_MICROPHYSICS_PALLETE = None
+
 #download params
 DEF_PRODUCT = 'FLDK' #Full Disk
 DEF_SATELLITE = "himawari8"
 
 #single-band params
-DEF_SB_PALLETE = 'greys_r'
+DEF_SB_PALLETE = 'Greys_r'
 
-#multi-band params
-DEF_MB_PALLETE = 'terrain'
+BAND_NAMES = {
+	'B01' : 'Blue [0.46 μm]',
+	'B02' : 'Green [0.51 μm]',
+	'B03' : 'Red [0.64 μm]',
+	'B04' : 'Veggie [0.86 μm]',
+	'B05' : 'Snow [1.6 μm]',
+	'B06' : 'Cloud Top Phase [2.3 μm]',
+	'B07' : 'Shortwave IR [3.9 μm]',
+	'B08' : 'Upper-level Water Vapor [6.2 μm]',
+	'B09' : 'Mid-level Water Vapor [6.9 μm]',
+	'B10' : 'Lower-level Water Vapor [7.3 μm]',
+	'B11' : 'Midwave IR [8.6 μm]',
+	'B12' : 'Ozone [9.6 μm]',
+	'B13' : '"Clean" Longwave IR [10.4 μm]',
+	'B14' : 'Longwave IR [11.2 μm]',
+	'B15' : '"Dirty" Longwave IR [12.4 μm]',
+	'B16' : 'CO2 [13.3 μm]',
+}
 
-def aws_readbucket_himawari(year, month, day, hour, minute, satellite=DEF_SATELLITE, product=DEF_PRODUCT, **kwargs):
+def aws_read_bucket(year, month, day, hour, minute, satellite=DEF_SATELLITE, product=DEF_PRODUCT, **kwargs):
 	"""
 	Downloads a single model file to a local directory. 
 
@@ -67,13 +95,13 @@ def aws_readbucket_himawari(year, month, day, hour, minute, satellite=DEF_SATELL
 			 path to file
 	"""
 
-	if kwargs.get('verbose') == True:
+	if bool(kwargs.get('verbose')) == True:
 		verbose = True
 		print("INFO: VERBOSE mode turned ON")
 	else:
 		verbose = False
 
-	if kwargs.get('debug') == True:
+	if bool(kwargs.get('debug')) == True:
 		debug = True
 		verbose = True
 		print("INFO: DEBUG mode turned ON")
@@ -118,7 +146,7 @@ def aws_readbucket_himawari(year, month, day, hour, minute, satellite=DEF_SATELL
 
 	return 1, list_of_aws_urls
 
-def download_singlefile_aws_himawari(save_dir, aws_url, **kwargs):
+def download_single_file_aws(save_dir, aws_url, **kwargs):
 	"""
 	Downloads a single model file to a local directory. 
 
@@ -133,18 +161,21 @@ def download_singlefile_aws_himawari(save_dir, aws_url, **kwargs):
 	if not os.path.exists(save_dir):
 		os.makedirs(save_dir)
 
-	if kwargs.get('verbose') == True:
+	if bool(kwargs.get('verbose')) == True:
 		verbose = True
 		print("INFO: VERBOSE mode turned ON")
 	else:
 		verbose = False
 
-	if kwargs.get('debug') == True:
+	if bool(kwargs.get('debug')) == True:
 		debug = True
 		verbose = True
 		print("INFO: DEBUG mode turned ON")
 	else:
 		debug = False
+
+	if debug:
+		print("DEBUG: Kwargs passed:", kwargs)
 
 	if debug:
 		print("DEBUG: Kwargs passed:", kwargs)
@@ -183,7 +214,7 @@ def download_singlefile_aws_himawari(save_dir, aws_url, **kwargs):
 	elapsed_time = datetime.now() - start_time
 	return 1, elapsed_time.total_seconds(), dest_path
 
-def plot_single_band_goes(file_path, save_dir, band, points, pallete=DEF_SB_PALLETE, bbox=DEF_BBOX, **kwargs):
+def plot_single_band(path_to_sectors_and_band_files, save_dir, band, points, bbox=DEF_BBOX, pallete=DEF_SB_PALLETE, **kwargs):
 	"""
 	Using a bounding box, plots a single satellite band and any points.
 
@@ -204,13 +235,17 @@ def plot_single_band_goes(file_path, save_dir, band, points, pallete=DEF_SB_PALL
 	"""
 	start_time = datetime.now()
 
-	if kwargs.get('verbose') == True:
+	bbox_WSEN = (float(bbox[3]), float(bbox[2]), float(bbox[1]), float(bbox[0])) #NESW to WSEN
+
+	bbox_WESN = (float(bbox[3]), float(bbox[1]), float(bbox[2]), float(bbox[0])) #NESW to WSEN
+
+	if bool(kwargs.get('verbose')) == True:
 		verbose = True
 		print("INFO: VERBOSE mode turned ON")
 	else:
 		verbose = False
 
-	if kwargs.get('debug') == True:
+	if bool(kwargs.get('debug')) == True:
 		debug = True
 		verbose = True
 		print("INFO: DEBUG mode turned ON")
@@ -220,29 +255,10 @@ def plot_single_band_goes(file_path, save_dir, band, points, pallete=DEF_SB_PALL
 	if debug:
 		print("DEBUG: Kwargs passed:", kwargs)
 
-	try:
-		data = xr.open_dataset(file_path, engine="netcdf4")
-		if verbose:
-			print("INFO: File at " + file_path + " opened successfully")
-	except Exception as e:
-		error_str = "Exception when opening file: " + e
-		if verbose:
-			print("INFO: " + error_str)
-
-		elapsed_time = datetime.now() - start_time
-		return 0, elapsed_time.total_seconds(), error_str
-
-	scan_start = datetime.strptime(data.time_coverage_start, '%Y-%m-%dT%H:%M:%S.%fZ')
-	scan_end = datetime.strptime(data.time_coverage_end, '%Y-%m-%dT%H:%M:%S.%fZ')
-	file_created = datetime.strptime(data.date_created, '%Y-%m-%dT%H:%M:%S.%fZ')
-	orbital_slot = data.orbital_slot #GOES-East, GOES-West, GOES-Test, etc.
-	sat_id = data.platform_ID #G18, G17, G16, etc.
 	if verbose:
-		print(f"""INFO: Scan start: {scan_start}\nINFO: Scan end: {scan_end}\nINFO: File created: {file_created}"""
-			  f"""\nINFO: Orbital slot: {orbital_slot}\nINFO: Satellite ID: {sat_id}""")
-	
+		print("INFO: Loading scene...")
 
-	#BAND SELECTION
+	base_scene = Scene(filenames=path_to_sectors_and_band_files, reader='ahi_hsd')
 
 	if band < 1 or band > 16:
 		error_str = "Error: Selected band must be between 1-16 (Selected band: " + str(band) + "?)"
@@ -252,354 +268,92 @@ def plot_single_band_goes(file_path, save_dir, band, points, pallete=DEF_SB_PALL
 		elapsed_time = datetime.now() - start_time
 		return 0, elapsed_time.total_seconds(), error_str
 
-	sel_band_str = 'CMI_C' + str(band).zfill(2)
-	sel_band = data[sel_band_str].data
-	
+	sel_band_str = 'B' + str(band).zfill(2)
+	base_scene.load([sel_band_str])
+
 	if verbose:
+		print("INFO: Scene loaded")
 		print("INFO: Selected band: ", sel_band_str)
+		print("INFO: Cropping and resampling...")
+
+	base_scene = base_scene.crop(ll_bbox=bbox_WSEN) # WSEN
+
+	resampled_scene = base_scene.resample(base_scene.min_area(), resampler='native')
+
+	if verbose:
+		print("INFO: Cropped and resampled")
+
+	scan_start = resampled_scene[sel_band_str].attrs['start_time']
+	scan_end = resampled_scene[sel_band_str].attrs['end_time']
+	sat_name = resampled_scene[sel_band_str].attrs['platform_name']
+	sat_id = sat_name.replace("Himawari-", "hw")
+
+	band_data = resampled_scene[sel_band_str].values
+
+	if verbose:
+		print(f"""INFO: Scan start: {scan_start}\nINFO: Scan end: {scan_end}"""
+			  f"""\nINFO: Satellite: {sat_name}""")
 
 	if debug:
-		print("DEBUG: Band data (no processing): \n")
-		print(sel_band)
+		print("DEBUG: Band data:")
+		print(band_data)
 
-	data = data.metpy.parse_cf('CMI_C02')
-	geog_data = data.metpy.cartopy_crs
-	x = data.x
-	y = data.y
-
- 	#DATA CORRECTIONS
-
-	correct_clip = DEF_CORRECT_CLIP
-	correct_gamma = DEF_CORRECT_GAMMA
-	for arg, value in kwargs.items():
-		if arg == "correct_clip":
-			correct_clip = value
-		if arg == "correct_gamma":
-			correct_gamma = value
-		if arg == "gamma":
-			gamma = float(value)
-
-	if correct_clip:
-		sel_band = np.clip(sel_band, 0, 1)
-		if verbose:
-			print("CORRECT: Clipping correction applied.")
-		if debug:
-			print("Band data (post-clip): \n")
-			print(sel_band)
-	else:
-		if verbose:
-			print("CORRECT: No clipping correction applied.")
-	
-	if correct_gamma:
-		gamma = DEF_GAMMA
-		sel_band = np.power(sel_band, 1/gamma)
-		if verbose:
-			print("Gamma correction applied. Gamma factor: ", gamma)
-		if debug:
-			print("CORRECT: Band data (post-gamma correction): \n")
-			print(sel_band)
-	else:
-		if verbose:
-			print("CORRECT: No gamma correction applied.")
+	ccrs = resampled_scene[sel_band_str].attrs['area'].to_cartopy_crs()
 
 	fig = plt.figure(figsize=(16., 9.))
-	ax = fig.add_subplot(1, 1, 1, projection=ccrs.PlateCarree())
-	
-	ax.set_extent(bounds, crs=ccrs.PlateCarree())
-	
-	plt.imshow(sel_band, origin='upper',
-		  extent=(x.min(), x.max(), y.min(), y.max()),
-		  transform=geog_data,
-		  interpolation='none',
-		  cmap=cm.get_cmap(pallete))
+	ax = fig.add_subplot(1, 1, 1, projection=ccrs)
+
+	image_vmin = DEF_VMIN
+	image_vmax = DEF_VMAX
+
+	for arg, value in kwargs.items():
+		if arg == 'vmin':
+			image_vmin = float(value)
+		if arg == 'vmax':
+			image_vmax = float(value)
+
+	if image_vmax and image_vmin:
+		img = ax.imshow(band_data, extent=ccrs.bounds, transform=ccrs, interpolation='none', cmap=pallete, vmin=image_vmin, vmax=image_vmax)
+	else:
+		img = ax.imshow(band_data, extent=ccrs.bounds, transform=ccrs, interpolation='none', cmap=pallete)
 	
 	#COLORBAR
 
 	colorbar_visible = DEF_COLORBAR_VISIBLE
 	colorbar_label = DEF_COLORBAR_LABEL
-	for arg, value in kwargs.items():
-		if arg.startswith('colorbar_'):
-			exec(f"{arg} = {value}") #dynamically set variables based on what was passed
-
-	if colorbar_visible:
-		plt.colorbar(ax=ax, orientation = "horizontal", pad=.05).set_label(colorbar_label)
-
-		if verbose:
-			print(f"COLORBAR: Drawing colorbar turned ON\nCOLORBAR: Label = {colorbar_label}")
-	
-	#GEOGRAPHY DRAWING
-
-	geog_visible = DEF_GEOG_VISIBLE
-	geog_draw_states = DEF_GEOG_DRAW_STATES
-	geog_draw_coastlines = DEF_GEOG_DRAW_COASTLINES
-	for arg, value in kwargs.items():
-		if arg.startswith('geog_'):
-			exec(f"{arg} = {value}") #dynamically set variables based on what was passed
-
-	#TODO: Add in more geography drawing options
-	if geog_visible:
-		if geog_draw_states:
-			ax.add_feature(ccrs.cartopy.feature.STATES)
-			if verbose: 
-				print("GEOG: Drawing states")
-		if geog_draw_coastlines:
-			ax.coastlines(resolution='50m', color='black', linewidth=1)
-			if verbose:
-				print("GEOG: Drawing coastlines")
-	else:
-		if verbose:
-			print("GEOG: Geography drawing turned OFF")
-
-	#POINT DRAWING
-
-	point_color = DEF_POINT_COLOR
-	point_size = DEF_POINT_SIZE
-	point_marker = DEF_POINT_MARKER
-	point_label_visible = DEF_POINT_LABEL_VISIBLE
-	point_label_color = DEF_POINT_LABEL_COLOR
-	point_label_fontsize = DEF_POINT_LABEL_FONTSIZE
-	point_label_xoffset = DEF_POINT_LABEL_XOFFSET
-	point_label_yoffset = DEF_POINT_LABEL_YOFFSET
-	for arg, value in kwargs.items():
-		if arg == "point_color":
-			point_color = value
-		if arg == "point_size":
-			point_size = float(value)
-		if arg == "point_marker":
-			point_marker = value
-		if arg == "point_label_visible":
-			point_label_visible = value
-		if arg == "point_label_color":
-			point_label_color = value
-		if arg == "point_label_fontsize":
-			point_label_fontsize = float(value)
-		if arg == "point_label_xoffset":
-			point_label_xoffset = float(value)
-		if arg == "point_label_yoffset":
-			point_label_yoffset = float(value)
-
-	if points:
-		num_points = len(points)
-		if verbose:
-			print(f'''POINT: {num_points} points passed to be plotted\nPOINT:Formating Options:\nPOINT: Point color: {point_color}'''
-				f'''\nPOINT: Point size: {point_size}\nPOINT: Point marker: {point_marker}\nPOINT: Label visibility: {point_label_visible}'''
-				f'''\nPOINT: Label color: {point_label_color}\nPOINT: Label font size: {point_label_fontsize}'''
-				f'''\nPOINT: Label x-offset: {point_label_xoffset}\nPOINT: Label y-offset: {point_label_yoffset}''')
-
-		for point in points:
-			x_axis = point[0]
-			y_axis = point[1]
-			label = point[2]
-			
-			ax.plot([y_axis],[x_axis], 
-				  color=point_color, marker=point_marker)
-		   
-			if point_label_visible:
-				ax.annotate(label, (y_axis + point_label_yoffset, x_axis + point_label_xoffset),
-					  horizontalalignment='center', color=point_label_color, fontsize=point_label_fontsize,
-					  transform=crs.PlateCarree(), annotation_clip=True, zorder=30)
-		
-	sel_band_name = data['band_id_C' + band.zfill(2)].long_name
-	
-	if kwargs.get('plot_title'):
-		plt_title = kwargs.get('plot_title')
-		if verbose:
-			print("FILE: Plot title set manually to '" + plt_title + "'")
-	else:
-		plt_title = orbital_slot.replace("-Test", "") + " (" + sat_id.replace("G", "GOES-") + ") - " + human_product_name #ex: GOES-WEST (G16) - Day Cloud Phase
-		if verbose:
-			print("FILE: Plot title generated dynamically")
-	
-	plt.title(plt_title, loc='left', fontweight='bold', fontsize=15)
-	plt.title('{}'.format(scan_end.strftime('%d %B %Y %H:%M UTC ')), loc='right')
-	
-	file_name = sat_id + "_" + sel_band_str + "_" + scan_end.strftime('%Y%m%d_%H%M%S%Z')
-	
-	if not os.path.exists(save_dir):
-		os.makedirs(save_dir)
-
-	dest_path = os.path.join(save_dir, file_name + ".png")
-	
-	file_dpi = DEF_FILE_DPI
-	for arg, value in kwargs.items():
-		if arg == "file_dpi":
-			file_dpi = int(arg)
-
-	plt.savefig(dest_path, bbox_inches="tight", dpi=file_dpi)
-	if verbose:
-		print("FILE: File titled " + file_name + " saved to " + save_dir)
-		print("FILE: DPI: " + file_dpi)
-		print("FILE: Full path: " + dest_path)
-	plt.close()
-
-	elapsed_time = datetime.now() - start_time
-	return 1, elapsed_time.total_seconds(), dest_path
-
-def plot_composite_goes(file_path, save_dir, product, points, bbox=DEF_BBOX, **kwargs):
-	"""
-	Using a bounding box, plots a single satellite band and any points.
-
-	Band is specified as a int between 1-16, corresponding to GOES
-	band id.
-
-	Bounding box is specified via a list of length 4:
-	[ll corner lat, ll corner lon, ur corner lat, ur corner lon]
-
-	Points are specified as a list of tuples, including label:
-	[(lat1, lon1, label1), (lat2, lon2, label2), ...]
-
-	Pallete is specified as a matplotlib compatable color pallete
-	name string. Suffix '_r' to reverse the color pallete
-
-	Returns: Success code, time (in seconds) for function to run,
-			 path to file
-	"""
-
-	start_time = datetime.now()
-
-	if kwargs.get('verbose') == True:
-		verbose = True
-		print("INFO: VERBOSE mode turned ON")
-	else:
-		verbose = False
-
-	if kwargs.get('debug') == True:
-		debug = True
-		verbose = True
-		print("INFO: DEBUG mode turned ON")
-	else:
-		debug = False
-
-	if debug:
-		print("DEBUG: Kwargs passed:", kwargs)
-
-	try:
-		data = xr.open_dataset(file_path, engine="netcdf4")
-		if verbose:
-			print("INFO: File at " + file_path + " opened successfully")
-	except Exception as e:
-		error_str = "Exception when opening file: " + e
-		if verbose:
-			print("INFO: " + error_str)
-
-		elapsed_time = datetime.now() - start_time
-		return 0, elapsed_time.total_seconds(), error_str
-
-	scan_start = datetime.strptime(data.time_coverage_start, '%Y-%m-%dT%H:%M:%S.%fZ')
-	scan_end = datetime.strptime(data.time_coverage_end, '%Y-%m-%dT%H:%M:%S.%fZ')
-	file_created = datetime.strptime(data.date_created, '%Y-%m-%dT%H:%M:%S.%fZ')
-	orbital_slot = data.orbital_slot #GOES-East, GOES-West, GOES-Test, etc.
-	sat_id = data.platform_ID #G18, G17, G16, etc.
-	if verbose:
-		print(f"""INFO: Scan start: {scan_start}\nINFO: Scan end: {scan_end}\nINFO: File created: {file_created}"""
-			  f"""\nINFO: Orbital slot: {orbital_slot}\nINFO: Satellite ID: {sat_id}""")
-
-
-	#PRODUCT SELECTION
-
-	red, green, blue, pallete, human_product_name = _calculate_composite_product_data(data, product)
-	
-	if verbose:
-		print("INFO: Selected product: " + product)
-		print("INFO: Auto-selected pallete: ", pallete)
-
-	if debug:
-		print("DEBUG: Band data (no processing)\nDEBUG: Red: \n")
-		print(red)
-		print("DEBUG: Green: ")
-		print(green)
-		print("DEBUG: Blue: ")
-		print(blue)
-
-	data = data.metpy.parse_cf('CMI_C02')
-	geog_data = data.metpy.cartopy_crs
-	x = data.x
-	y = data.y
-	
-
- 	#DATA CORRECTIONS
-
-	correct_clip = DEF_CORRECT_CLIP
-	correct_gamma = DEF_CORRECT_GAMMA
-	for arg, value in kwargs.items():
-		if arg == "correct_clip":
-			correct_clip = value
-		if arg == "correct_gamma":
-			correct_gamma = value
-		if arg == "gamma":
-			gamma = float(value)
-
-	if correct_clip:
-		red = np.clip(red, 0, 1)
-		green = np.clip(green, 0, 1)
-		blue = np.clip(blue, 0, 1)
-
-		if verbose:
-			print("CORRECT: Clipping correction applied.")
-		if debug:
-			print("DEBUG: Band data (post-clip)\nDEBUG: Red: \n")
-			print(red)
-			print("DEBUG: Green: ")
-			print(green)
-			print("DEBUG: Blue: ")
-			print(blue)
-	else:
-		if verbose:
-			print("CORRECT: No clipping correction applied.")
-	
-	if correct_gamma:
-		gamma = DEF_GAMMA
-
-		red = np.power(red, 1/gamma)
-		green = np.power(green, 1/gamma)
-		blue = np.power(blue, 1/gamma)
-
-		if verbose:
-			print("CORRECT: Gamma correction applied. Gamma factor: ", gamma)
-		if debug:
-			print("DEBUG: Band data (post-gamma correction)\nDEBUG: Red: \n")
-			print(red)
-			print("DEBUG: Green: ")
-			print(green)
-			print("DEBUG: Blue: ")
-			print(blue)
-	else:
-		if verbose:
-			print("CORRECT: No gamma correction applied.")
-
-	rgb_composite = np.stack([red, green, blue], axis=2)
-	
-	fig = plt.figure(figsize=(16., 9.))
-	ax = fig.add_subplot(1, 1, 1, projection=ccrs.PlateCarree())
-	
-	ax.set_extent(bbox, crs=ccrs.PlateCarree())
-	
-	plt.imshow(rgb_composite, origin='upper',
-		  extent=(x.min(), x.max(), y.min(), y.max()),
-		  transform=geog_data,
-		  interpolation='none')
-	
-	#COLORBAR
-
-	colorbar_visible = DEF_COLORBAR_VISIBLE
-	colorbar_label = DEF_COLORBAR_LABEL
-
+	colorbar_shrink_fact = DEF_COLORBAR_SHRINK_FACT
+	colorbar_location = DEF_COLORBAR_LOCATION
 	for arg, value in kwargs.items():
 		if arg == 'colorbar_visible':
 			colorbar_visible = value
 		if arg == 'colorbar_label':
 			colorbar_label = value
+		if arg == 'colorbar_shrink_fact':
+			colorbar_shrink_fact = float(value)
+		if arg == 'colorbar_location':
+			colorbar_location = value
 
 	if colorbar_visible:
-		plt.colorbar(ax=ax, orientation = "horizontal", pad=.05).set_label(colorbar_label)
-		if verbose:
-			print(f"COLORBAR: Drawing colorbar turned ON\nCOLORBAR: Label = '{colorbar_label}'")
+		if colorbar_location == 'inside':
+			plt.colorbar(mappable=img, ax=ax, orientation = "horizontal", shrink=colorbar_shrink_fact, pad=-0.15).set_label(colorbar_label)
+			if verbose:
+				print(f"COLORBAR: Drawing colorbar turned ON\nCOLORBAR: Location = Inside plot\nCOLORBAR: Label = '{colorbar_label}'")
+		if colorbar_location == 'bottom':
+			plt.colorbar(mappable=img, ax=ax, orientation = "horizontal", shrink=colorbar_shrink_fact, pad=.05).set_label(colorbar_label)
+			if verbose:
+				print(f"COLORBAR: Drawing colorbar turned ON\nCOLORBAR: Location = Bottom of plot\nCOLORBAR: Label = '{colorbar_label}'")
+		if colorbar_location == 'right':
+			plt.colorbar(mappable=img, ax=ax, orientation = "vertical", shrink=colorbar_shrink_fact, pad=.05).set_label(colorbar_label)
+			if verbose:
+				print(f"COLORBAR: Drawing colorbar turned ON\nCOLORBAR: Location = Left of plot\nCOLORBAR: Label = '{colorbar_label}'")
 	
 	#GEOGRAPHY DRAWING
 
 	geog_visible = DEF_GEOG_VISIBLE
 	geog_draw_states = DEF_GEOG_DRAW_STATES
 	geog_draw_coastlines = DEF_GEOG_DRAW_COASTLINES
+	geog_draw_borders = DEF_GEOG_DRAW_BORDERS
+	geog_draw_water = DEF_GEOG_DRAW_WATER
 	for arg, value in kwargs.items():
 		if arg == "geog_visible":
 			geog_visible = value
@@ -607,18 +361,29 @@ def plot_composite_goes(file_path, save_dir, product, points, bbox=DEF_BBOX, **k
 			geog_draw_states = value
 		if arg == "geog_draw_coastlines":
 			geog_draw_coastlines = value
+		if arg == "geog_draw_borders":
+			geog_draw_borders = value
+		if arg == "geog_draw_water":
+			geog_draw_water = value
 	#TODO: Add in more geography drawing options
-
 
 	if geog_visible:
 		if geog_draw_states:
-			ax.add_feature(ccrs.cartopy.feature.STATES)
+			ax.add_feature(crs.cartopy.feature.STATES)
 			if verbose: 
 				print("GEOG: Drawing states")
 		if geog_draw_coastlines:
 			ax.coastlines(resolution='50m', color='black', linewidth=1)
 			if verbose:
 				print("GEOG: Drawing coastlines")
+		if geog_draw_borders:
+			ax.add_feature(cfeature.BORDERS, linewidth=1.5)
+			if verbose:
+				print("GEOG: Drawing borders")
+		if geog_draw_water:
+			ax.add_feature(cfeature.LAKES.with_scale('10m'),linestyle='-',linewidth=0.5,alpha=1,edgecolor='blue',facecolor='none')
+			if verbose:
+				print("GEOG: Drawing water")
 	else:
 		if verbose:
 			print("GEOG: Geography drawing turned OFF")
@@ -641,7 +406,7 @@ def plot_composite_goes(file_path, save_dir, product, points, bbox=DEF_BBOX, **k
 		if arg == "point_marker":
 			point_marker = value
 		if arg == "point_label_visible":
-			point_label_visible = value
+			point_label_visible = bool(value)
 		if arg == "point_label_color":
 			point_label_color = value
 		if arg == "point_label_fontsize":
@@ -664,20 +429,272 @@ def plot_composite_goes(file_path, save_dir, product, points, bbox=DEF_BBOX, **k
 			y_axis = point[1]
 			label = point[2]
 			
-			ax.plot([y_axis],[x_axis], 
-				  color=point_color, marker=point_marker)
+			ax.plot(y_axis, x_axis, 
+				  color=point_color, marker=point_marker, markersize=point_size,
+				  transform=crs.PlateCarree())
 		   
 			if point_label_visible:
 				ax.annotate(label, (y_axis + point_label_yoffset, x_axis + point_label_xoffset),
 					  horizontalalignment='center', color=point_label_color, fontsize=point_label_fontsize,
-					  transform=crs.PlateCarree(), annotation_clip=True, zorder=30)
+					  transform=crs.PlateCarree(), annotation_clip=True)
+
+
+	if bool(kwargs.get('plot_simple_band')) == True:
+		band_name = BAND_NAMES.get(sel_band_str)[:-10]
+	else:
+		band_name = BAND_NAMES.get(sel_band_str)
+
+	if kwargs.get('plot_title'):
+		plt_title = kwargs.get('plot_title')
+		if verbose:
+			print("FILE: Plot title set manually to '" + plt_title + "'")
+	else:
+		plt_title = sat_name + " - " + band_name
+		if verbose:
+			print("FILE: Plot title generated dynamically")
+	
+	plt.title(plt_title, loc='left', fontweight='bold', fontsize=15)
+	plt.title('{}'.format(scan_end.strftime('%d %B %Y %H:%M:%S UTC ')), loc='right')
+	
+	file_name = sat_id + "_" + sel_band_str.replace("B", "b") + "_" + scan_end.strftime('%Y%m%d_%H%M%S%Z')
+	
+	if not os.path.exists(save_dir):
+		os.makedirs(save_dir)
+
+	dest_path = os.path.join(save_dir, file_name + ".png")
+	
+	file_dpi = DEF_FILE_DPI
+	for arg, value in kwargs.items():
+		if arg == "file_dpi":
+			file_dpi = int(arg)
+
+	plt.savefig(dest_path, bbox_inches="tight", dpi=file_dpi)
+	if verbose:
+		print("FILE: File titled " + file_name + " saved to " + save_dir)
+		print("FILE: DPI: " + str(file_dpi))
+		print("FILE: Full path: " + dest_path)
+	plt.close()
+
+	elapsed_time = datetime.now() - start_time
+	return 1, elapsed_time.total_seconds(), dest_path
+
+def plot_composite(path_to_sectors_and_band_files, save_dir, product, points, bbox=DEF_BBOX, **kwargs):
+	"""
+	Using a bounding box, plots a single satellite band and any points.
+
+	Band is specified as a int between 1-16, corresponding to GOES
+	band id.
+
+	Bounding box is specified via a list of length 4:
+	[ll corner lat, ll corner lon, ur corner lat, ur corner lon]
+
+	Points are specified as a list of tuples, including label:
+	[(lat1, lon1, label1), (lat2, lon2, label2), ...]
+
+	Pallete is specified as a matplotlib compatable color pallete
+	name string. Suffix '_r' to reverse the color pallete
+
+	Returns: Success code, time (in seconds) for function to run,
+			 path to file
+	"""
+
+	start_time = datetime.now()
+
+	bbox_WSEN = (float(bbox[3]), float(bbox[2]), float(bbox[1]), float(bbox[0])) #NESW to WSEN
+
+	bbox_WESN = (float(bbox[3]), float(bbox[1]), float(bbox[2]), float(bbox[0])) #NESW to WSEN
+
+	if kwargs.get('verbose') == True:
+		verbose = True
+		print("INFO: VERBOSE mode turned ON")
+	else:
+		verbose = False
+
+	if kwargs.get('debug') == True:
+		debug = True
+		verbose = True
+		print("INFO: DEBUG mode turned ON")
+	else:
+		debug = False
+
+	if debug:
+		print("DEBUG: Kwargs passed:", kwargs)
+
+	if verbose:
+		print("INFO: Loading scene...")
+
+	base_scene = Scene(filenames=path_to_sectors_and_band_files, reader='ahi_hsd')
+
+	base_scene.load([product])
+
+	if verbose:
+		print("INFO: Scene loaded")
+
+	pallete, human_product_name = _calculate_composite_product_data(product)
+
+	if verbose:
+		print(f"INFO: Selected product: {product}")
+		print(f"INFO: Natural name: {human_product_name}")
+		print(f"INFO: Auto-selected pallete: {pallete}")
+		print("INFO: Cropping and resampling...")
+
+	base_scene = base_scene.crop(ll_bbox=bbox_WSEN) # WSEN
+
+	resampled_scene = base_scene.resample(base_scene.min_area(), resampler='native')
+
+	if verbose:
+		print("INFO: Cropped and resampled")
+
+	scan_start = resampled_scene[product].attrs['start_time']
+	scan_end = resampled_scene[product].attrs['end_time']
+	sat_name = resampled_scene[product].attrs['platform_name']
+	sat_id = sat_name.replace("Himawari-", "hw")
+
+	image = np.asarray(resampled_scene[product]).transpose(1,2,0)
+	image = np.interp(image, (np.percentile(image,1), np.percentile(image,99)), (0, 1))
+
+	if verbose:
+		print(f"""INFO: Scan start: {scan_start}\nINFO: Scan end: {scan_end}"""
+			  f"""\nINFO: Satellite: {sat_name}""")
+
+	if debug:
+		print("DEBUG: Image data:")
+		print(image)
+
+	ccrs = resampled_scene[product].attrs['area'].to_cartopy_crs()
+
+	fig = plt.figure(figsize=(16., 9.))
+	ax = fig.add_subplot(1, 1, 1, projection=ccrs)
+	
+	img = ax.imshow(image, extent=ccrs.bounds, transform=ccrs, interpolation='none')
+	
+	#COLORBAR
+
+	colorbar_visible = DEF_COLORBAR_VISIBLE
+	colorbar_label = DEF_COLORBAR_LABEL
+	colorbar_shrink_fact = DEF_COLORBAR_SHRINK_FACT
+	colorbar_location = DEF_COLORBAR_LOCATION
+	for arg, value in kwargs.items():
+		if arg == 'colorbar_visible':
+			colorbar_visible = value
+		if arg == 'colorbar_label':
+			colorbar_label = value
+		if arg == 'colorbar_shrink_fact':
+			colorbar_shrink_fact = float(value)
+		if arg == 'colorbar_location':
+			colorbar_location = value
+
+	if colorbar_visible:
+		if colorbar_location == 'inside':
+			plt.colorbar(mappable=img, ax=ax, orientation = "horizontal", shrink=colorbar_shrink_fact, pad=-0.15).set_label(colorbar_label)
+			if verbose:
+				print(f"COLORBAR: Drawing colorbar turned ON\nCOLORBAR: Location = Inside plot\nCOLORBAR: Label = '{colorbar_label}'")
+		if colorbar_location == 'bottom':
+			plt.colorbar(mappable=img, ax=ax, orientation = "horizontal", shrink=colorbar_shrink_fact, pad=.05).set_label(colorbar_label)
+			if verbose:
+				print(f"COLORBAR: Drawing colorbar turned ON\nCOLORBAR: Location = Bottom of plot\nCOLORBAR: Label = '{colorbar_label}'")
+		if colorbar_location == 'right':
+			plt.colorbar(mappable=img, ax=ax, orientation = "vertical", shrink=colorbar_shrink_fact, pad=.05).set_label(colorbar_label)
+			if verbose:
+				print(f"COLORBAR: Drawing colorbar turned ON\nCOLORBAR: Location = Left of plot\nCOLORBAR: Label = '{colorbar_label}'")
+	
+	#GEOGRAPHY DRAWING
+
+	geog_visible = DEF_GEOG_VISIBLE
+	geog_draw_states = DEF_GEOG_DRAW_STATES
+	geog_draw_coastlines = DEF_GEOG_DRAW_COASTLINES
+	geog_draw_borders = DEF_GEOG_DRAW_BORDERS
+	geog_draw_water = DEF_GEOG_DRAW_WATER
+	for arg, value in kwargs.items():
+		if arg == "geog_visible":
+			geog_visible = value
+		if arg == "geog_draw_states":
+			geog_draw_states = value
+		if arg == "geog_draw_coastlines":
+			geog_draw_coastlines = value
+		if arg == "geog_draw_borders":
+			geog_draw_borders = value
+		if arg == "geog_draw_water":
+			geog_draw_water = value
+	#TODO: Add in more geography drawing options
+
+	if geog_visible:
+		if geog_draw_states:
+			ax.add_feature(crs.cartopy.feature.STATES)
+			if verbose: 
+				print("GEOG: Drawing states")
+		if geog_draw_coastlines:
+			ax.coastlines(resolution='50m', color='black', linewidth=1)
+			if verbose:
+				print("GEOG: Drawing coastlines")
+		if geog_draw_borders:
+			ax.add_feature(cfeature.BORDERS, linewidth=1.5)
+			if verbose:
+				print("GEOG: Drawing borders")
+		if geog_draw_water:
+			ax.add_feature(cfeature.LAKES.with_scale('10m'),linestyle='-',linewidth=0.5,alpha=1,edgecolor='blue',facecolor='none')
+			if verbose:
+				print("GEOG: Drawing water")
+	else:
+		if verbose:
+			print("GEOG: Geography drawing turned OFF")
+
+	#POINT DRAWING
+
+	point_color = DEF_POINT_COLOR
+	point_size = DEF_POINT_SIZE
+	point_marker = DEF_POINT_MARKER
+	point_label_visible = DEF_POINT_LABEL_VISIBLE
+	point_label_color = DEF_POINT_LABEL_COLOR
+	point_label_fontsize = DEF_POINT_LABEL_FONTSIZE
+	point_label_xoffset = DEF_POINT_LABEL_XOFFSET
+	point_label_yoffset = DEF_POINT_LABEL_YOFFSET
+	for arg, value in kwargs.items():
+		if arg == "point_color":
+			point_color = value
+		if arg == "point_size":
+			point_size = float(value)
+		if arg == "point_marker":
+			point_marker = value
+		if arg == "point_label_visible":
+			point_label_visible = bool(value)
+		if arg == "point_label_color":
+			point_label_color = value
+		if arg == "point_label_fontsize":
+			point_label_fontsize = float(value)
+		if arg == "point_label_xoffset":
+			point_label_xoffset = float(value)
+		if arg == "point_label_yoffset":
+			point_label_yoffset = float(value)
+
+	if points:
+		num_points = len(points)
+		if verbose:
+			print(f'''POINT: {num_points} points passed to be plotted\nPOINT: Formating Options:\nPOINT: Point color: {point_color}'''
+				f'''\nPOINT: Point size: {point_size}\nPOINT: Point marker: {point_marker}\nPOINT: Label visibility: {point_label_visible}'''
+				f'''\nPOINT: Label color: {point_label_color}\nPOINT: Label font size: {point_label_fontsize}'''
+				f'''\nPOINT: Label x-offset: {point_label_xoffset}\nPOINT: Label y-offset: {point_label_yoffset}''')
+
+		for point in points:
+			x_axis = point[0]
+			y_axis = point[1]
+			label = point[2]
+			
+			ax.plot(y_axis, x_axis, 
+				  color=point_color, marker=point_marker, markersize=point_size,
+				  transform=crs.PlateCarree())
+		   
+			if point_label_visible:
+				ax.annotate(label, (y_axis + point_label_yoffset, x_axis + point_label_xoffset),
+					  horizontalalignment='center', color=point_label_color, fontsize=point_label_fontsize,
+					  transform=crs.PlateCarree(), annotation_clip=True)
 	
 	if kwargs.get('plot_title'):
 		plt_title = kwargs.get('plot_title')
 		if verbose:
 			print("FILE: Plot title set manually to '" + plt_title + "'")
 	else:
-		plt_title = orbital_slot.replace("-Test", "") + " (" + sat_id.replace("G", "GOES-") + ") - " + human_product_name #ex: GOES-WEST (G16) - Day Cloud Phase
+		plt_title = sat_name + " - " + human_product_name
 		if verbose:
 			print("FILE: Plot title generated dynamically")
 	
@@ -706,100 +723,39 @@ def plot_composite_goes(file_path, save_dir, product, points, bbox=DEF_BBOX, **k
 	elapsed_time = datetime.now() - start_time
 	return 1, elapsed_time.total_seconds(), dest_path
 
-def _calculate_composite_product_data(data, product_name):
+def _calculate_composite_product_data(product_name):
 
 	if product_name == 'day_land_cloud_fire':
 
-		red = data['CMI_C06'].data
-		green = data['CMI_C03'].data
-		blue = data['CMI_C02'].data
-
-		red_bounds = (0.0, 1.0) #in albedo (%)
-		green_bounds = (0.0, 1.0) #in albedo (%)
-		blue_bounds = (0.0, 1.0) #in albedo (%)
-
-		red = ((red - red_bounds[0]) / (red_bounds[1] - red_bounds[0]))
-		green = ((green - green_bounds[0]) / (green_bounds[1] - green_bounds[0]))
-		blue = ((blue - blue_bounds[0]) / (blue_bounds[1] - blue_bounds[0]))
-
-		pallete = None
+		pallete = DEF_DAY_LAND_CLOUD_FIRE_PALLETE
 
 		human_product_name = "Day Land Cloud/Fire"
 
 	if product_name == 'day_cloud_phase':
 
-		red = data['CMI_C13'].data
-		green = data['CMI_C02'].data
-		blue = data['CMI_C05'].data
-
-		red = red - 273.15 #convert from kelvin to celsius
-
-		red_bounds = (-53.5, 7.5) #in degrees C
-		green_bounds = (0.0, 0.78) #in albedo (%)
-		blue_bounds = (0.01, 0.59) #in albedo (%)
-
-		#normalize
-		red = ((red - red_bounds[1]) / (red_bounds[0] - red_bounds[1]))
-		green = ((green - green_bounds[0]) / (green_bounds[1] - green_bounds[0]))
-		blue = ((blue - blue_bounds[0]) / (blue_bounds[1] - blue_bounds[0]))
-
-		pallete = None
+		pallete = DEF_DAY_CLOUD_PHASE_PALLETE
 
 		human_product_name = 'Day Cloud Phase'
 
 	if product_name == 'nt_microphysics':
 
-		c15 = data['CMI_C15'].data #12.4 micron
-		c13 = data['CMI_C13'].data #10.4 micron
-		c7 = data['CMI_C07'].data #3.9 micron
-
-		red = c15 - c13
-		green = c13 - c7
-		blue = c13
-
-		#red = red - 273.15
-		#green = green - 273.15
-		blue = blue - 273.15
-
-		red_bounds = (-6.7, 2.6)
-		green_bounds = (-3.1, 5.2)
-		blue_bounds = (-29.6, 19.5)
-
-		red = ((red - red_bounds[0]) / (red_bounds[1] - red_bounds[0]))
-		green = ((green - green_bounds[0]) / (green_bounds[1] - green_bounds[0]))
-		blue = ((blue - blue_bounds[0]) / (blue_bounds[1] - blue_bounds[0]))
-
-		pallete = None
+		pallete = DEF_NT_MICROPHYSICS_PALLETE
 
 		human_product_name = "Nighttime Microphysics"
+
+	if product_name == 'true_color':
+
+		pallete = DEF_TRUE_COLOR_PALLETE
+
+		human_product_name = "True Color"
+
+	if product_name == 'natural_color':
+
+		pallete = DEF_NATURAL_COLOR_PALLETE
+
+		human_product_name = "Natural Color"
  
-	return red, green, blue, pallete, human_product_name
-
-def time_remaining_calc(tot_items, processed_items, proc_times_list):
-
-	if processed_items <= 1:
-		avg_time = 0
-	else:
-		avg_time = sum(proc_times_list) / len(proc_times_list)
-
-	time_remaining = (avg_time * (tot_items - processed_items))/3600 #in hours
-	tr_hours = time_remaining
-	tr_minutes = (time_remaining*60) % 60
-	tr_seconds = (time_remaining*3600) % 60
-
-	time_remaining_str = "{}:{}:{}".format(str(round(tr_hours)).zfill(2), str(round(tr_minutes)).zfill(2), str(round(tr_seconds)).zfill(2))
-
-	return time_remaining_str
-
-def total_time_calc(total_time_seconds):
-
-	t_hours = total_time_seconds/3600
-	t_minutes = (t_hours*60) % 60
-	t_seconds = (t_hours*3600) % 60
-
-	time_str = "{}:{}:{}".format(str(round(t_hours)).zfill(2), str(round(t_minutes)).zfill(2), str(round(t_seconds)).zfill(2))
-
-	return time_str
+	return pallete, human_product_name
 
 if __name__ == "__main__":
 
@@ -900,14 +856,14 @@ if __name__ == "__main__":
 
 			bucket_time_est = time_remaining_calc(tot_buckets, num_buckets, bucket_times)
 
-			print(f'Finished downloading {num_files} from bucket. Total time: {tot_time_str}')
+			print(f'Finished downloading {num_files} files from bucket. Total time: {tot_time_str}         ')
 			print(f'Estimated time remaining: {bucket_time_est}\n')
 
 	all_time_str = total_time_calc(all_time)
 
 	tot_files_all_buckets += num_files
 
-	print(f'Finished downloading {tot_files_all_buckets} from {num_buckets} buckets. Total time: {all_time_str}')
+	print(f'Finished downloading {tot_files_all_buckets} files from {num_buckets} buckets. Total time: {all_time_str}')
 
 
 

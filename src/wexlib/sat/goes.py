@@ -50,10 +50,8 @@ DEF_FILE_DPI = 300
 DEF_SECTOR = 'C' #CONUS
 
 #single-band params
-DEF_SB_PALLETE = 'greys_r'
+DEF_SB_PALLETE = 'Greys_r'
 
-#multi-band params
-DEF_MB_PALLETE = 'terrain'
 
 def aws_readbucket_goes(year, julian_day, hour, satellite, sector=DEF_SECTOR, **kwargs):
 	"""

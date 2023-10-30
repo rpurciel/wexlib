@@ -14,6 +14,7 @@ def download_model(save_dir, year, month, day, hour, **kwargs):
              path to file
     """
 	start_time = datetime.now()
+	dest_path = "NOT YET IMPLEMENTED"
 
 	elapsed_time = datetime.now() - start_time
 	return 1, elapsed_time.total_seconds(), dest_path
@@ -41,6 +42,7 @@ def plot_plan_view_model(file_path, save_dir, level, variables, points, bbox, **
              path to file
     """
 	start_time = datetime.now()
+	dest_path = "NOT YET IMPLEMENTED"
 
 	elapsed_time = datetime.now() - start_time
 	return 1, elapsed_time.total_seconds(), dest_path
@@ -74,6 +76,7 @@ def plot_cross_section_model(file_path, save_dir, start_point, end_point, variab
              path to file
     """
 	start_time = datetime.now()
+	dest_path = "NOT YET IMPLEMENTED"
 
 	elapsed_time = datetime.now() - start_time
 	return 1, elapsed_time.total_seconds(), dest_path
@@ -90,6 +93,7 @@ def raob_csv_sounding_model(file_path, save_path, sounding_lat=DEFAULT_LAT, soun
     """
 
     start_time = datetime.now()
+    dest_path = "NOT YET IMPLEMENTED"
 
 	elapsed_time = datetime.now() - start_time
 	return 1, elapsed_time.total_seconds(), dest_path
