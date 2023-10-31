@@ -303,7 +303,7 @@ def model_sounding_raobcsv(ua_file_path, sfc_file_path, save_path, sounding_lat,
     file_skip_duplicates = DEF_FILE_SKIP_DUPLICATES
     for arg, value in kwargs.items():
         if arg == 'file_skip_duplicates':
-            file_skip_duplicates = value
+            file_skip_duplicates = internal.str_to_bool(value)
 
     if verbose and file_skip_duplicates:
     	print("IGNORE: Skipping duplicate points turned ON")

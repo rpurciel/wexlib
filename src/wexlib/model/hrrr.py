@@ -1,17 +1,24 @@
-import sys, os, glob
+import sys
+import os
+import glob
+from datetime import datetime
+import ssl
+
 import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
 import pandas as pd
-from datetime import datetime
-import ssl
 import urllib.request
+
+import wexlib.util.internal as internal
+
+warnings.filterwarnings('ignore')
 
 #sounding options
 DEFAULT_LAT = 39.446030
 DEFAULT_LON = -119.771627
 
-def download_hrrr(save_dir, year, month, day, hour, **kwargs):
+def download(save_dir, year, month, day, hour, **kwargs):
     """
     Downloads a single HRRR file to a local directory. Kwargs
     allow downloads of both alaska files and forecast files
@@ -57,7 +64,6 @@ def download_hrrr(save_dir, year, month, day, hour, **kwargs):
     dest_path = os.path.join(save_dir, file_name)
 
     try:
-        print("starting download...")
         urllib.request.urlretrieve(url, dest_path) #Retrieve the file and write it as a grbfile
     except urllib.error.URLError as e:
         print(e.reason)
@@ -130,7 +136,7 @@ def plot_cross_section_hrrr(file_path, save_dir, start_point, end_point, variabl
     elapsed_time = datetime.now() - start_time
     return 1, elapsed_time.total_seconds(), dest_path
 
-def raob_csv_sounding_hrrr(file_path, save_path, sounding_lat=DEFAULT_LAT, sounding_lon=DEFAULT_LON, **kwargs):
+def model_sounding_raobcsv(file_path, save_path, sounding_lat, sounding_lon, points_to_ignore_list, **kwargs):
     """
     Generates a CSV for plotting in RAOB from input HRRR file.
 
@@ -147,13 +153,13 @@ def raob_csv_sounding_hrrr(file_path, save_path, sounding_lat=DEFAULT_LAT, sound
 
     start_time = datetime.now()
 
-    if kwargs.get('verbose') == True:
+    if internal.str_to_bool(kwargs.get('verbose')) == True:
         verbose = True
         print("INFO: VERBOSE mode turned ON")
     else:
         verbose = False
 
-    if kwargs.get('debug') == True:
+    if internal.str_to_bool(kwargs.get('debug')) == True:
         debug = True
         verbose = True
         print("INFO: DEBUG mode turned ON")
@@ -163,17 +169,24 @@ def raob_csv_sounding_hrrr(file_path, save_path, sounding_lat=DEFAULT_LAT, sound
     if debug:
         print("DEBUG: Kwargs passed:", kwargs)
 
-    if sounding_lon < 0 :
+    if sounding_lon < 0:
         sounding_lon += 360
 
         if debug:
             print("DEBUG: Sounding longitude corrected")
             print(f"DEBUG: Original={sounding_lon - 360} New={sounding_lon}")
 
+    file_skip_duplicates = DEF_FILE_SKIP_DUPLICATES
+    for arg, value in kwargs.items():
+        if arg == 'file_skip_duplicates':
+            file_skip_duplicates = internal.str_to_bool(value)
+
+    if verbose and file_skip_duplicates:
+        print("IGNORE: Skipping duplicate points turned ON")
+
     ds = xr.open_dataset(file_path, engine='cfgrib',
                         backend_kwargs={'filter_by_keys':{'typeOfLevel': 'isobaricInhPa'},'errors':'ignore'})
 
-        
     date_time = ds.time.data #Grabbing the datetime object
     datetime_str = str(date_time) #Converting datetime object back to a string 
     date_str = datetime_str[0:10]
@@ -181,11 +194,6 @@ def raob_csv_sounding_hrrr(file_path, save_path, sounding_lat=DEFAULT_LAT, sound
     date_time_str = date_str +" "+ time_str
         
     date = date_time_str
-
-    # Becuase the grib reader reads longitude from 0-360 and not -180-180
-    # we have to adjust the `sounding_lon`.
-    if sounding_lon < 0 :
-        sounding_lon += 360 
 
     abslat = np.abs(ds.latitude-sounding_lat)
     abslon = np.abs(ds.longitude-sounding_lon)
@@ -196,8 +204,20 @@ def raob_csv_sounding_hrrr(file_path, save_path, sounding_lat=DEFAULT_LAT, sound
 
     point_ds = ds.sel(y=idx_y, x=idx_x)
 
-    print('Requested Point:', sounding_lat, sounding_lon)
-    print('Nearest Model Point', point_ds.latitude.data, point_ds.longitude.data)
+    if verbose:
+        print("INFO: Starting interpolation...")
+        print('INFO: Requested pt:', sounding_lat, sounding_lon)
+        print('INFO: Nearest pt:', point_ds.latitude.data, point_ds.longitude.data)
+
+    selected_point = (point_ds.latitude.data, point_ds.longitude.data)
+    if file_skip_duplicates:
+        if selected_point in points_to_ignore_list:
+            
+            if verbose:
+                print(f"IGNORE: Skipping selected point {selected_point} because point was found in 'points to ignore' list!")
+
+            elapsed_time = datetime.now() - start_time
+            return 1, elapsed_time.total_seconds(), selected_point #1 because "point ignored successfully"
 
     latitude_float = round(float(point_ds.latitude.data),2) #Converts the array to a float and rounds it to stick into dataframe later
     longitude_float = round(float(point_ds.longitude.data - 360),2) #Same as for longitude

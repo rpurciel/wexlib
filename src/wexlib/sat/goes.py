@@ -53,7 +53,7 @@ DEF_SECTOR = 'C' #CONUS
 DEF_SB_PALLETE = 'Greys_r'
 
 
-def aws_readbucket_goes(year, julian_day, hour, satellite, sector=DEF_SECTOR, **kwargs):
+def aws_read_bucket(year, julian_day, hour, satellite, sector=DEF_SECTOR, **kwargs):
 	"""
 	Downloads a single model file to a local directory. 
 
@@ -83,7 +83,7 @@ def aws_readbucket_goes(year, julian_day, hour, satellite, sector=DEF_SECTOR, **
 	try:
 		aws = s3fs.S3FileSystem(anon=True)
 	except Exception as e:
-		error_str = ("Error: " + e)
+		error_str = f"Error: {e}"
 
 		if verbose:
 			print(error_str)
@@ -97,7 +97,7 @@ def aws_readbucket_goes(year, julian_day, hour, satellite, sector=DEF_SECTOR, **
 	try:
 		list_of_aws_urls = np.array(aws.ls(f'noaa-{satellite}/ABI-L2-MCMIP{sector}/{year}/{julian_day}/{hour}'))
 	except Exception as e:
-		error_str = ("ERROR: ", e)
+		error_str = f"Error: {e}"
 
 		if verbose:
 			print("ERROR:", e)
@@ -114,7 +114,7 @@ def aws_readbucket_goes(year, julian_day, hour, satellite, sector=DEF_SECTOR, **
 
 	return 1, list_of_aws_urls
 
-def download_singlefile_aws_goes(save_dir, aws_url, **kwargs):
+def download_single_file_aws(save_dir, aws_url, **kwargs):
 	"""
 	Downloads a single model file to a local directory. 
 
@@ -148,7 +148,7 @@ def download_singlefile_aws_goes(save_dir, aws_url, **kwargs):
 	try:
 		aws = s3fs.S3FileSystem(anon=True)
 	except Exception as e:
-		error_str = ("ERROR: " + e)
+		error_str = f"Error: {e}"
 
 		if verbose:
 			print(error_str)
@@ -165,7 +165,7 @@ def download_singlefile_aws_goes(save_dir, aws_url, **kwargs):
 	try:
 		aws.get(aws_url, os.path.join(save_dir, file_name))
 	except Exception as e:
-		error_str = ("ERROR: " + e)
+		error_str = f"Error: {e}"
 
 		if verbose:
 			print(error_str)

@@ -22,6 +22,8 @@ import s3fs
 from satpy import Scene
 from pyresample.utils import get_area_def
 
+import wexlib.util.internal as internal
+
 warnings.filterwarnings('ignore')
 
 #global params
@@ -95,13 +97,13 @@ def aws_read_bucket(year, month, day, hour, minute, satellite=DEF_SATELLITE, pro
 			 path to file
 	"""
 
-	if bool(kwargs.get('verbose')) == True:
+	if internal.str_to_bool(kwargs.get('verbose')) == True:
 		verbose = True
 		print("INFO: VERBOSE mode turned ON")
 	else:
 		verbose = False
 
-	if bool(kwargs.get('debug')) == True:
+	if internal.str_to_bool(kwargs.get('debug')) == True:
 		debug = True
 		verbose = True
 		print("INFO: DEBUG mode turned ON")
@@ -161,13 +163,13 @@ def download_single_file_aws(save_dir, aws_url, **kwargs):
 	if not os.path.exists(save_dir):
 		os.makedirs(save_dir)
 
-	if bool(kwargs.get('verbose')) == True:
+	if internal.str_to_bool(kwargs.get('verbose')) == True:
 		verbose = True
 		print("INFO: VERBOSE mode turned ON")
 	else:
 		verbose = False
 
-	if bool(kwargs.get('debug')) == True:
+	if internal.str_to_bool(kwargs.get('debug')) == True:
 		debug = True
 		verbose = True
 		print("INFO: DEBUG mode turned ON")
@@ -239,13 +241,13 @@ def plot_single_band(path_to_sectors_and_band_files, save_dir, band, points, bbo
 
 	bbox_WESN = (float(bbox[3]), float(bbox[1]), float(bbox[2]), float(bbox[0])) #NESW to WSEN
 
-	if bool(kwargs.get('verbose')) == True:
+	if internal.str_to_bool(kwargs.get('verbose')) == True:
 		verbose = True
 		print("INFO: VERBOSE mode turned ON")
 	else:
 		verbose = False
 
-	if bool(kwargs.get('debug')) == True:
+	if internal.str_to_bool(kwargs.get('debug')) == True:
 		debug = True
 		verbose = True
 		print("INFO: DEBUG mode turned ON")
@@ -406,7 +408,7 @@ def plot_single_band(path_to_sectors_and_band_files, save_dir, band, points, bbo
 		if arg == "point_marker":
 			point_marker = value
 		if arg == "point_label_visible":
-			point_label_visible = bool(value)
+			point_label_visible = internal.str_to_bool(value)
 		if arg == "point_label_color":
 			point_label_color = value
 		if arg == "point_label_fontsize":
@@ -439,7 +441,7 @@ def plot_single_band(path_to_sectors_and_band_files, save_dir, band, points, bbo
 					  transform=crs.PlateCarree(), annotation_clip=True)
 
 
-	if bool(kwargs.get('plot_simple_band')) == True:
+	if internal.str_to_bool(kwargs.get('plot_simple_band')) == True:
 		band_name = BAND_NAMES.get(sel_band_str)[:-10]
 	else:
 		band_name = BAND_NAMES.get(sel_band_str)
@@ -504,13 +506,13 @@ def plot_composite(path_to_sectors_and_band_files, save_dir, product, points, bb
 
 	bbox_WESN = (float(bbox[3]), float(bbox[1]), float(bbox[2]), float(bbox[0])) #NESW to WSEN
 
-	if kwargs.get('verbose') == True:
+	if internal.str_to_bool(kwargs.get('verbose')) == True:
 		verbose = True
 		print("INFO: VERBOSE mode turned ON")
 	else:
 		verbose = False
 
-	if kwargs.get('debug') == True:
+	if internal.str_to_bool(kwargs.get('debug')) == True:
 		debug = True
 		verbose = True
 		print("INFO: DEBUG mode turned ON")
@@ -657,7 +659,7 @@ def plot_composite(path_to_sectors_and_band_files, save_dir, product, points, bb
 		if arg == "point_marker":
 			point_marker = value
 		if arg == "point_label_visible":
-			point_label_visible = bool(value)
+			point_label_visible = internal.str_to_bool(value)
 		if arg == "point_label_color":
 			point_label_color = value
 		if arg == "point_label_fontsize":
