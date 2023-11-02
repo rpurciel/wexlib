@@ -1,0 +1,10 @@
+<command>
+	<info platform="himawari9" product="download"/>
+	<params>
+		<start_time year="2023" month="9" day="2" hour="0" minute="0"/>
+		<end_time year="2023" month="9" day="2" hour="23" minute="59"/>
+		<save_dir>/Users/ryanpurciel/Development/wexlib/tests/temp</save_dir>
+		<sector>FLDK</sector>
+		<cmd_args debug='True'>
+	</params>
+</command>

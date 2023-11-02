@@ -1,0 +1,15 @@
+<command>
+	<info platform="himawari9" product="plot_composite"/>
+	<params>
+		<start_time year="2023" month="9" day="2" hour="14" minute="0"/>
+		<end_time year="2023" month="9" day="2" hour="15" minute="0"/>
+		<data_dir>/Users/ryanpurciel/Development/wexlib/tests/temp</data_dir>
+		<save_dir>/Users/ryanpurciel/Development/wexlib/tests/temp</save_dir>
+		<product>natural_color</product>
+		<points>
+			<point lat='35.677861' lon='139.772671' label='Tokyo'/>
+		</points>
+		<bbox center_lat='35.677861' center_lon='139.772671' radius='3'/>
+		<cmd_args debug='True'>
+	</params>
+</command>

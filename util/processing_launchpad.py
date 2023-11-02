@@ -4,6 +4,7 @@ import warnings
 import datetime
 import os
 warnings.filterwarnings('ignore')
+sys.path.insert(0, '/Users/ryanpurciel/Development/wexlib/src')
 sys.path.insert(0, '/Users/rpurciel/Development/wexlib/src') #FOR TESTING ONLY!!!
 
 from bs4 import BeautifulSoup, NavigableString
