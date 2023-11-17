@@ -711,9 +711,9 @@ def processor_selector(command_file_path, **kwargs):
                     status, time, path = himawari.plot_composite(input_files, save_dir, 
                                                                    sat_product, points_list, 
                                                                    bbox, **cmd_args)
-                num_files += status
-                tot_time += time
-                plot_times += [time]
+                    num_files += status
+                    tot_time += time
+                    plot_times += [time]
 
                 time_remaining = calc_time_remaining(tot_files, num_files, plot_times)
                 print(f'{num_files}/{tot_files} plots created. Est. time remaining: {time_remaining}', end=endchar)
@@ -1286,7 +1286,7 @@ if __name__ == "__main__":
 
     while True:
 
-        cmd_file = "/Users/rpurciel/Documents/Test/HRRR/command_hrrr_model_sounding_raobcsv.xml"
+        cmd_file = "/Users/rpurciel/Documents/Voltitude/Test WRF Run Soundings/Plots/custom sat/command_goes_download.xml"
 
         print("\nInput a file path to use a command file, or press any key to use default: ")
         print(f"'{cmd_file}'")

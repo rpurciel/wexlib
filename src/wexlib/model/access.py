@@ -217,18 +217,15 @@ def model_sounding_raobcsv(file_path, save_path, sounding_lat, sounding_lon, poi
 
     ##Relative Humidity
 
-    # relativehumidity = point_dsrh.r.data
+    relativehumidity = point_data.relhum.data
 
-    # A = 17.27
-    # B = 237.7
+    A = 17.27
+    B = 237.7
 
-    # dwptc = B * (np.log(relativehumidity/100.) + (A*tmpc/(B+tmpc))) / (A-np.log(relativehumidity/100.)-((A*tmpc)/(B+tmpc)))
-
-    dwptc = [-999] * len(press)
-    
+    dwptc = B * (np.log(relativehumidity/100.) + (A*tmpc/(B+tmpc))) / (A-np.log(relativehumidity/100.)-((A*tmpc)/(B+tmpc)))
     
     #Create and combine separate data frames in main data frame
-    df = pd.DataFrame(data=[press, tmpc[0], dwptc, uwindkts[0], vwindkts[0], hgt[0]])
+    df = pd.DataFrame(data=[press, tmpc[0], dwptc[0], uwindkts[0], vwindkts[0], hgt[0]])
 
     df_t = df.T
     main_df = pd.concat([df_t], axis=0, ignore_index=True)

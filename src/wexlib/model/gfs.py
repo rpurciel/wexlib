@@ -10,12 +10,14 @@ import xarray as xr
 import numpy as np
 import pandas as pd
 
-DEFAULT_LAT = 39.446030
-DEFAULT_LON = -119.771627
+import wexlib.util.internal as internal
 
 warnings.filterwarnings("ignore")
 
-def download_gfs(save_dir, year, month, day, hour, **kwargs):
+#download params
+DEF_DL_FORCE_FCST0 = False
+
+def download(save_dir, year, month, day, hour, **kwargs):
     """
     Downloads a single model file to a local directory. 
 
@@ -27,8 +29,37 @@ def download_gfs(save_dir, year, month, day, hour, **kwargs):
     """
     start_time = datetime.now()
 
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+
+    if internal.str_to_bool(kwargs.get('verbose')) == True:
+        verbose = True
+        print("INFO: VERBOSE mode turned ON")
+    else:
+        verbose = False
+
+    if internal.str_to_bool(kwargs.get('debug')) == True:
+        debug = True
+        verbose = True
+        print("INFO: DEBUG mode turned ON")
+    else:
+        debug = False
+
+    if debug:
+        print("DEBUG: Kwargs passed:", kwargs)
+
+    if verbose:
+        print(f"PROCESSING: Selected time {str(year).zfill(4)}-{str(month).zfill(2)}-{str(day).zfill(2)} {str(hour).zfill(2)}:00:00 UTC")
+
+    force_fcst0 = DEF_DL_FORCE_FCST0
+    for arg, value in kwargs.items():
+        if arg == 'force_fcst0':
+            force_fcst0 = internal.str_to_bool(value)
+
     if kwargs.get('forecast_hour'):
-        forecast_hour = kwargs.get('forecast_hour')
+        forecast_hour = int(kwargs.get('forecast_hour'))
+        if verbose:
+            print(f"INFO: Downloading for forecast hour {forecast_hour}")
 
         url = "https://noaa-gfs-bdp-pds.s3.amazonaws.com/gfs."+ \
             str(year)+str(month).zfill(2)+str(day).zfill(2)+ \
@@ -37,23 +68,41 @@ def download_gfs(save_dir, year, month, day, hour, **kwargs):
         file_name = "gfs."+str(year)+ str(month).zfill(2) + str(day).zfill(2)+"."+str(hour).zfill(2)+"z.pgrb2.0p25.f"+ \
             str(forecast_hour).zfill(3)
     else:
-        url = "https://noaa-gfs-bdp-pds.s3.amazonaws.com/gfs."+ \
-            str(year)+str(month).zfill(2)+str(day).zfill(2)+ \
-            "/"+str(hour).zfill(2)+"/atmos/gfs.t"+str(hour).zfill(2)+\
-            "z.pgrb2.0p25.anl"''
-        file_name = "gfs."+str(year)+ str(month).zfill(2) + str(day).zfill(2)+"."+str(hour).zfill(2)+"z.pgrb2.0p25.anl"
+        if force_fcst0:
+            if verbose:
+                print(f"INFO: Forcing forecast hour 0 to be downloaded")
+            url = "https://noaa-gfs-bdp-pds.s3.amazonaws.com/gfs."+ \
+                str(year)+str(month).zfill(2)+str(day).zfill(2)+ \
+                "/"+str(hour).zfill(2)+"/atmos/gfs.t"+str(hour).zfill(2)+\
+                "z.pgrb2.0p25.anl"''
+            file_name = "gfs."+str(year)+ str(month).zfill(2) + str(day).zfill(2)+"."+str(hour).zfill(2)+"z.pgrb2.0p25.f000"
+        else:
+            if verbose:
+                print(f"INFO: Downloading analysis data")
+            url = "https://noaa-gfs-bdp-pds.s3.amazonaws.com/gfs."+ \
+                str(year)+str(month).zfill(2)+str(day).zfill(2)+ \
+                "/"+str(hour).zfill(2)+"/atmos/gfs.t"+str(hour).zfill(2)+\
+                "z.pgrb2.0p25.anl"''
+            file_name = "gfs."+str(year)+ str(month).zfill(2) + str(day).zfill(2)+"."+str(hour).zfill(2)+"z.pgrb2.0p25.anl"
 
     ssl._create_default_https_context = ssl._create_unverified_context
 
     dest_path = os.path.join(save_dir, file_name)
 
+    if verbose:
+        print(f"INFO: Starting downloader...")
     try:
         urllib.request.urlretrieve(url, dest_path) #Retrieve the file and write it as a grbfile
     except urllib.error.URLError as e:
-        print(e.reason)
+
+        if verbose:
+            print(f"ERROR: {e.reason}")
 
         elapsed_time = datetime.now() - start_time
-        return 0, elapsed_time.total_seconds()
+        return 0, elapsed_time.total_seconds(), e.reason
+
+    if verbose:
+        print(f"INFO: Finished downloading file")
 
     elapsed_time = datetime.now() - start_time
     return 1, elapsed_time.total_seconds(), dest_path
@@ -118,7 +167,7 @@ def plot_cross_section_model(file_path, save_dir, start_point, end_point, variab
     elapsed_time = datetime.now() - start_time
     return 1, elapsed_time.total_seconds(), dest_path
 
-def raob_csv_sounding_gfs(file_path, save_path, sounding_lat=DEFAULT_LAT, sounding_lon=DEFAULT_LON, **kwargs):
+def raob_csv_sounding_gfs(file_path, save_path, sounding_lat, sounding_lon, **kwargs):
     """
     Using a lat/lon, generates a CSV sounding for use in RAOB.
 

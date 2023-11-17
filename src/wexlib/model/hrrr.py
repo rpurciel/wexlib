@@ -19,6 +19,8 @@ warnings.filterwarnings('ignore')
 DEFAULT_LAT = 39.446030
 DEFAULT_LON = -119.771627
 
+DEF_FILE_SKIP_DUPLICATES = True
+
 def download(save_dir, year, month, day, hour, **kwargs):
     """
     Downloads a single HRRR file to a local directory. Kwargs
@@ -307,10 +309,10 @@ def model_sounding_raobcsv(file_path, save_path, sounding_lat, sounding_lon, poi
 
     if kwargs.get('sounding_title'):
         csv_name = kwargs.get('sounding_title')
-        file_name = date.replace(":","_").replace("-", "_") + "_" + csv_name + "_HRRR_RAOB.csv"
+        file_name = date.replace(":","").replace("-", "").replace(" ", "_") + "_" + csv_name + "_HRRR_RAOB.csv"
     else:
         csv_name = "UNNAMED SOUNDING"
-        file_name = date.replace(":","_").replace("-", "_") + "_HRRR_RAOB.csv"
+        file_name = date.replace(":","").replace("-", "").replace(" ", "_") + "_HRRR_RAOB.csv"
     
     d = {0:['RAOB/CSV','DTG','LAT','LON','ELEV','MOISTURE','WIND','GPM','MISSING','RAOB/DATA','PRES'],
          1:[csv_name,date,latitude_float,longitude_float,elev,'TD','kts','MSL',-999,'','TEMP'],2:['','','N','W','m','','U/V','','','','TD'],3:['','','','','','','','','','','UU'],
@@ -327,7 +329,7 @@ def model_sounding_raobcsv(file_path, save_path, sounding_lat, sounding_lon, poi
         print("FILE: Saved File: " + file_name + " to " + save_path)
 
     elapsed_time = datetime.now() - start_time
-    return 1, elapsed_time.total_seconds(), dest_path
+    return 1, elapsed_time.total_seconds(), selected_point
 
 def time_remaining_calc(tot_items, processed_items, proc_times_list):
 

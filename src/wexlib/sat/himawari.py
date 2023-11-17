@@ -12,6 +12,7 @@ import metpy
 import matplotlib
 from matplotlib import cm
 import matplotlib.pyplot as plt
+import matplotlib.patheffects as PathEffects
 import cartopy 
 import cartopy.crs as crs
 import cartopy.crs as ccrs
@@ -49,6 +50,10 @@ DEF_POINT_MARKER = 'o'
 DEF_POINT_LABEL_VISIBLE = True
 DEF_POINT_LABEL_COLOR = 'black'
 DEF_POINT_LABEL_FONTSIZE = 10
+DEF_POINT_LABEL_FONTWEIGHT = 400
+DEF_POINT_LABEL_OUTLINE = True 
+DEF_POINT_LABEL_OUTLINE_COLOR = 'white'
+DEF_POINT_LABEL_OUTLINE_WEIGHT = 5
 DEF_POINT_LABEL_XOFFSET = -0.85
 DEF_POINT_LABEL_YOFFSET = 0
 
@@ -179,9 +184,6 @@ def download_single_file_aws(save_dir, aws_url, **kwargs):
 	if debug:
 		print("DEBUG: Kwargs passed:", kwargs)
 
-	if debug:
-		print("DEBUG: Kwargs passed:", kwargs)
-
 	try:
 		aws = s3fs.S3FileSystem(anon=True)
 	except Exception as e:
@@ -240,6 +242,9 @@ def plot_single_band(path_to_sectors_and_band_files, save_dir, band, points, bbo
 	bbox_WSEN = (float(bbox[3]), float(bbox[2]), float(bbox[1]), float(bbox[0])) #NESW to WSEN
 
 	bbox_WESN = (float(bbox[3]), float(bbox[1]), float(bbox[2]), float(bbox[0])) #NESW to WSEN
+
+	if not os.path.exists(save_dir):
+		os.makedirs(save_dir)
 
 	if internal.str_to_bool(kwargs.get('verbose')) == True:
 		verbose = True
@@ -398,8 +403,12 @@ def plot_single_band(path_to_sectors_and_band_files, save_dir, band, points, bbo
 	point_label_visible = DEF_POINT_LABEL_VISIBLE
 	point_label_color = DEF_POINT_LABEL_COLOR
 	point_label_fontsize = DEF_POINT_LABEL_FONTSIZE
+	point_label_fontweight = DEF_POINT_LABEL_FONTWEIGHT
 	point_label_xoffset = DEF_POINT_LABEL_XOFFSET
 	point_label_yoffset = DEF_POINT_LABEL_YOFFSET
+	point_label_outline = DEF_POINT_LABEL_OUTLINE
+	point_label_outline_color = DEF_POINT_LABEL_OUTLINE_COLOR
+	point_label_outline_weight = DEF_POINT_LABEL_OUTLINE_WEIGHT
 	for arg, value in kwargs.items():
 		if arg == "point_color":
 			point_color = value
@@ -411,20 +420,29 @@ def plot_single_band(path_to_sectors_and_band_files, save_dir, band, points, bbo
 			point_label_visible = internal.str_to_bool(value)
 		if arg == "point_label_color":
 			point_label_color = value
+		if arg == "point_label_fontweight":
+			point_label_fontweight = float(value)
 		if arg == "point_label_fontsize":
 			point_label_fontsize = float(value)
 		if arg == "point_label_xoffset":
 			point_label_xoffset = float(value)
 		if arg == "point_label_yoffset":
 			point_label_yoffset = float(value)
+		if arg == "point_label_outline":
+			point_label_outline = internal.str_to_bool(value)
+		if arg == "point_label_outline_color":
+			point_label_outline_color = value
+		if arg == "point_label_outline_weight":
+			point_label_outline_weight = float(value)
 
 	if points:
 		num_points = len(points)
 		if verbose:
 			print(f'''POINT: {num_points} points passed to be plotted\nPOINT: Formating Options:\nPOINT: Point color: {point_color}'''
 				f'''\nPOINT: Point size: {point_size}\nPOINT: Point marker: {point_marker}\nPOINT: Label visibility: {point_label_visible}'''
-				f'''\nPOINT: Label color: {point_label_color}\nPOINT: Label font size: {point_label_fontsize}'''
-				f'''\nPOINT: Label x-offset: {point_label_xoffset}\nPOINT: Label y-offset: {point_label_yoffset}''')
+				f'''\nPOINT: Label color: {point_label_color}\nPOINT: Label font size: {point_label_fontsize}\nPOINT: Label font weight: {point_label_fontweight}'''
+				f'''\nPOINT: Label x-offset: {point_label_xoffset}\nPOINT: Label y-offset: {point_label_yoffset}\nPOINT: Label outline: {point_label_outline}'''
+				f'''\nPOINT: Label outline color: {point_label_outline_color}\nPOINT: Label outline weight: {point_label_outline_weight}''')
 
 		for point in points:
 			x_axis = point[0]
@@ -436,9 +454,12 @@ def plot_single_band(path_to_sectors_and_band_files, save_dir, band, points, bbo
 				  transform=crs.PlateCarree())
 		   
 			if point_label_visible:
-				ax.annotate(label, (y_axis + point_label_yoffset, x_axis + point_label_xoffset),
+				label_obj = ax.annotate(label, (y_axis + point_label_yoffset, x_axis + point_label_xoffset),
 					  horizontalalignment='center', color=point_label_color, fontsize=point_label_fontsize,
-					  transform=crs.PlateCarree(), annotation_clip=True)
+					  fontweight=point_label_fontweight, transform=crs.PlateCarree(), annotation_clip=True)
+
+				if point_label_outline:
+					label_obj.set_path_effects([PathEffects.withStroke(linewidth=point_label_outline_weight, foreground=point_label_outline_color)])
 
 
 	if internal.str_to_bool(kwargs.get('plot_simple_band')) == True:
@@ -460,9 +481,6 @@ def plot_single_band(path_to_sectors_and_band_files, save_dir, band, points, bbo
 	
 	file_name = sat_id + "_" + sel_band_str.replace("B", "b") + "_" + scan_end.strftime('%Y%m%d_%H%M%S%Z')
 	
-	if not os.path.exists(save_dir):
-		os.makedirs(save_dir)
-
 	dest_path = os.path.join(save_dir, file_name + ".png")
 	
 	file_dpi = DEF_FILE_DPI
@@ -505,6 +523,9 @@ def plot_composite(path_to_sectors_and_band_files, save_dir, product, points, bb
 	bbox_WSEN = (float(bbox[3]), float(bbox[2]), float(bbox[1]), float(bbox[0])) #NESW to WSEN
 
 	bbox_WESN = (float(bbox[3]), float(bbox[1]), float(bbox[2]), float(bbox[0])) #NESW to WSEN
+
+	if not os.path.exists(save_dir):
+		os.makedirs(save_dir)
 
 	if internal.str_to_bool(kwargs.get('verbose')) == True:
 		verbose = True
@@ -649,8 +670,12 @@ def plot_composite(path_to_sectors_and_band_files, save_dir, product, points, bb
 	point_label_visible = DEF_POINT_LABEL_VISIBLE
 	point_label_color = DEF_POINT_LABEL_COLOR
 	point_label_fontsize = DEF_POINT_LABEL_FONTSIZE
+	point_label_fontweight = DEF_POINT_LABEL_FONTWEIGHT
 	point_label_xoffset = DEF_POINT_LABEL_XOFFSET
 	point_label_yoffset = DEF_POINT_LABEL_YOFFSET
+	point_label_outline = DEF_POINT_LABEL_OUTLINE
+	point_label_outline_color = DEF_POINT_LABEL_OUTLINE_COLOR
+	point_label_outline_weight = DEF_POINT_LABEL_OUTLINE_WEIGHT
 	for arg, value in kwargs.items():
 		if arg == "point_color":
 			point_color = value
@@ -662,20 +687,29 @@ def plot_composite(path_to_sectors_and_band_files, save_dir, product, points, bb
 			point_label_visible = internal.str_to_bool(value)
 		if arg == "point_label_color":
 			point_label_color = value
+		if arg == "point_label_fontweight":
+			point_label_fontweight = float(value)
 		if arg == "point_label_fontsize":
 			point_label_fontsize = float(value)
 		if arg == "point_label_xoffset":
 			point_label_xoffset = float(value)
 		if arg == "point_label_yoffset":
 			point_label_yoffset = float(value)
+		if arg == "point_label_outline":
+			point_label_outline = internal.str_to_bool(value)
+		if arg == "point_label_outline_color":
+			point_label_outline_color = value
+		if arg == "point_label_outline_weight":
+			point_label_outline_weight = float(value)
 
 	if points:
 		num_points = len(points)
 		if verbose:
 			print(f'''POINT: {num_points} points passed to be plotted\nPOINT: Formating Options:\nPOINT: Point color: {point_color}'''
 				f'''\nPOINT: Point size: {point_size}\nPOINT: Point marker: {point_marker}\nPOINT: Label visibility: {point_label_visible}'''
-				f'''\nPOINT: Label color: {point_label_color}\nPOINT: Label font size: {point_label_fontsize}'''
-				f'''\nPOINT: Label x-offset: {point_label_xoffset}\nPOINT: Label y-offset: {point_label_yoffset}''')
+				f'''\nPOINT: Label color: {point_label_color}\nPOINT: Label font size: {point_label_fontsize}\nPOINT: Label font weight: {point_label_fontweight}'''
+				f'''\nPOINT: Label x-offset: {point_label_xoffset}\nPOINT: Label y-offset: {point_label_yoffset}\nPOINT: Label outline: {point_label_outline}'''
+				f'''\nPOINT: Label outline color: {point_label_outline_color}\nPOINT: Label outline weight: {point_label_outline_weight}''')
 
 		for point in points:
 			x_axis = point[0]
@@ -687,9 +721,13 @@ def plot_composite(path_to_sectors_and_band_files, save_dir, product, points, bb
 				  transform=crs.PlateCarree())
 		   
 			if point_label_visible:
-				ax.annotate(label, (y_axis + point_label_yoffset, x_axis + point_label_xoffset),
+				label_obj = ax.annotate(label, (y_axis + point_label_yoffset, x_axis + point_label_xoffset),
 					  horizontalalignment='center', color=point_label_color, fontsize=point_label_fontsize,
-					  transform=crs.PlateCarree(), annotation_clip=True)
+					  fontweight=point_label_fontweight, transform=crs.PlateCarree(), annotation_clip=True)
+
+				if point_label_outline:
+					label_obj.set_path_effects([PathEffects.withStroke(linewidth=point_label_outline_weight, foreground=point_label_outline_color)])
+
 	
 	if kwargs.get('plot_title'):
 		plt_title = kwargs.get('plot_title')
@@ -704,9 +742,6 @@ def plot_composite(path_to_sectors_and_band_files, save_dir, product, points, bb
 	plt.title('{}'.format(scan_end.strftime('%d %B %Y %H:%M:%S UTC ')), loc='right')
 	
 	file_name = sat_id + "_" + product + "_" + scan_end.strftime('%Y%m%d_%H%M%S%Z')
-	
-	if not os.path.exists(save_dir):
-		os.makedirs(save_dir)
 
 	dest_path = os.path.join(save_dir, file_name + ".png")
 	
