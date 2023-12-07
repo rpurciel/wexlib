@@ -1,0 +1,40 @@
+[
+	{"alias" : ["GFS", "gfs"],
+	 "info": {
+	 	"product_name":"GFS",
+	 	"long_name":"Global Forecast System",
+	 	"category":"model",
+	 	"internal_name":"gfs",
+	 	"id":"101",
+	 	"storage_type":"aws",
+	 	"aws_bucket_id":"noaa-gfs-bdp-pds",
+	 	"aws_key_patterns":{
+	 		"pressure-level-025deg":"gfs.{year}{month}{day}/{hour}/atmos/gfs.t{hour}z.pgrb2.0p25.{fcst_hr}",
+	 		"pressure-level-025deg-fallback":"gfs.{year}{month}{day}/{hour}/gfs.t{hour}z.pgrb2.0p25.{fcst_hr}"
+	 	},
+	 	"product_versions":["pressure-level-025deg"],
+	 	"file_extension":".grib2",
+	 	"run_period":"6h",
+	 	"run_period_sec":"21600"
+	 	}
+	},
+	{"alias" : ["hrrr", "HRRR"],
+	 "info": {
+	 	"product_name":"HRRR",
+	 	"long_name":"High-Resolution Rapid Refresh",
+	 	"category":"model",
+	 	"internal_name":"hrrr",
+	 	"id":"102",
+	 	"storage_type":"aws",
+	 	"aws_bucket_id":"noaa-hrrr-bdp-pds",
+	 	"aws_key_patterns":{
+	 		"pressure-level":"hrrr.{year}{month}{day}/{product}/hrrr.t{hour}z.wrfprsf{fcst_hr}.grib2"
+	 	},
+	 	"product_versions":["pressure-level"],
+	 	"product_sectors": ["conus", "alaska"],
+	 	"file_extension":".grib2",
+	 	"run_period":"1h",
+	 	"run_period_sec":"3600"
+	 	}
+	}
+]

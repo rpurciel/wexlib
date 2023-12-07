@@ -124,7 +124,7 @@ def plot_cross_section(file_path, save_dir, start_point, end_point, variables, p
     elapsed_time = datetime.now() - start_time
     return 1, elapsed_time.total_seconds(), dest_path
 
-def model_sounding_raobcsv(file_path, save_path, sounding_lat, sounding_lon, points_to_ignore_list, **kwargs):
+def model_sounding_raobcsv(file_path, save_dir, sounding_lat, sounding_lon, points_to_ignore_list, **kwargs):
     """
     Using a lat/lon, generates a CSV sounding for use in RAOB.
 
@@ -136,6 +136,9 @@ def model_sounding_raobcsv(file_path, save_path, sounding_lat, sounding_lon, poi
     """
 
     start_time = datetime.now()
+
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
 
     if internal.str_to_bool(kwargs.get('verbose')) == True:
         verbose = True
@@ -207,7 +210,6 @@ def model_sounding_raobcsv(file_path, save_path, sounding_lat, sounding_lon, poi
     
     #Convert Kelvin temps to C
     tmpc = tmp - 273.15
-    hgt = hgt / 9.80665 #GPM to meters
 
     uwind = point_data.zonal_wnd.data
     vwind = point_data.merid_wnd.data
@@ -259,12 +261,12 @@ def model_sounding_raobcsv(file_path, save_path, sounding_lat, sounding_lon, poi
     # for idx_files in glob.glob(working_dir+"*.idx"):
     #     os.remove(idx_files)
     
-    dest_path = os.path.join(save_path, file_name)
+    dest_path = os.path.join(save_dir, file_name)
 
     main_df.to_csv(dest_path, index=False, header=False)
 
     if verbose:
-        print("FILE: Saved File: " + file_name + " to " + save_path)
+        print("FILE: Saved File: " + file_name + " to " + save_dir)
 
     elapsed_time = datetime.now() - start_time
     return 1, elapsed_time.total_seconds(), selected_point

@@ -51,7 +51,7 @@ DEF_POINT_LABEL_VISIBLE = True
 DEF_POINT_LABEL_COLOR = 'black'
 DEF_POINT_LABEL_FONTSIZE = 10
 DEF_POINT_LABEL_FONTWEIGHT = 400
-DEF_POINT_LABEL_OUTLINE = True 
+DEF_POINT_LABEL_OUTLINE = False
 DEF_POINT_LABEL_OUTLINE_COLOR = 'white'
 DEF_POINT_LABEL_OUTLINE_WEIGHT = 5
 DEF_POINT_LABEL_XOFFSET = -0.85
@@ -323,6 +323,50 @@ def plot_single_band(path_to_sectors_and_band_files, save_dir, band, points, bbo
 		img = ax.imshow(band_data, extent=ccrs.bounds, transform=ccrs, interpolation='none', cmap=pallete, vmin=image_vmin, vmax=image_vmax)
 	else:
 		img = ax.imshow(band_data, extent=ccrs.bounds, transform=ccrs, interpolation='none', cmap=pallete)
+
+	# pix_value_visible = DEF_PIX_VALUE_VISIBLE
+	# pix_value_drawing_center = DEF_PIX_VALUE_DRAWING_CENTER
+	# pix_value_drawing_radius = DEF_PIX_VALUE_DRAWING_RADIUS
+	# for arg, value in kwargs.items():
+	# 	if arg == 'colorbar_visible':
+	# 		colorbar_visible = internal.str_to_bool(value)
+	# 	if arg == 'colorbar_label':
+	# 		colorbar_label = value
+	# 	if arg == 'colorbar_shrink_fact':
+	# 		colorbar_shrink_fact = float(value)
+	# 	if arg == 'colorbar_location':
+	# 		colorbar_location = value
+
+	if internal.str_to_bool(kwargs.get('plot_pix_value')) == True:
+		scene_as_xarray = resampled_scene.to_xarray(include_lonlats=True)
+		pix_lats = scene_as_xarray.latitude.values
+		pix_lons = scene_as_xarray.longitude.values
+
+		band_data_list = band_data.tolist()
+		pix_lats_list = pix_lats.tolist()
+		pix_lons_list = pix_lons.tolist()
+
+		#print(len(band_data_list), len(pix_lats_list), len(pix_lons_list))
+
+		for row_index in range(0, len(band_data_list), 1):
+			band_data_row = band_data_list[row_index]
+			pix_lats_row = pix_lats_list[row_index]
+			pix_lons_row = pix_lons_list[row_index]
+
+			#print(len(band_data_row), len(pix_lats_row), len(pix_lons_row))
+			for pos_index in range(0, len(band_data_row), 1):
+				value = round(band_data_row[pos_index], 1)
+				lat = pix_lats_row[pos_index]
+				lon = pix_lons_row[pos_index]
+
+				pix_value = ax.annotate(value, (lon, lat),
+										horizontalalignment='left', color='orange', fontsize=4,
+										transform=crs.PlateCarree(), annotation_clip=True)
+
+		# for value, lat, lon in (band_data.flatten(), pix_lats.flatten(), pix_lons.flatten()):
+			# pix_value = ax.annotate(value, (lon, lat),
+		  	# 						horizontalalignment='center', color='orange', fontsize=6,
+			# 						transform=crs.PlateCarree(), annotation_clip=True)
 	
 	#COLORBAR
 
@@ -332,7 +376,7 @@ def plot_single_band(path_to_sectors_and_band_files, save_dir, band, points, bbo
 	colorbar_location = DEF_COLORBAR_LOCATION
 	for arg, value in kwargs.items():
 		if arg == 'colorbar_visible':
-			colorbar_visible = value
+			colorbar_visible = internal.str_to_bool(value)
 		if arg == 'colorbar_label':
 			colorbar_label = value
 		if arg == 'colorbar_shrink_fact':
@@ -363,15 +407,15 @@ def plot_single_band(path_to_sectors_and_band_files, save_dir, band, points, bbo
 	geog_draw_water = DEF_GEOG_DRAW_WATER
 	for arg, value in kwargs.items():
 		if arg == "geog_visible":
-			geog_visible = value
+			geog_visible = internal.str_to_bool(value)
 		if arg == "geog_draw_states":
-			geog_draw_states = value
+			geog_draw_states = internal.str_to_bool(value)
 		if arg == "geog_draw_coastlines":
-			geog_draw_coastlines = value
+			geog_draw_coastlines = internal.str_to_bool(value)
 		if arg == "geog_draw_borders":
-			geog_draw_borders = value
+			geog_draw_borders = internal.str_to_bool(value)
 		if arg == "geog_draw_water":
-			geog_draw_water = value
+			geog_draw_water = internal.str_to_bool(value)
 	#TODO: Add in more geography drawing options
 
 	if geog_visible:
@@ -462,7 +506,7 @@ def plot_single_band(path_to_sectors_and_band_files, save_dir, band, points, bbo
 					label_obj.set_path_effects([PathEffects.withStroke(linewidth=point_label_outline_weight, foreground=point_label_outline_color)])
 
 
-	if internal.str_to_bool(kwargs.get('plot_simple_band')) == True:
+	if internal.str_to_bool(kwargs.get('simple_band_name')) == True:
 		band_name = BAND_NAMES.get(sel_band_str)[:-10]
 	else:
 		band_name = BAND_NAMES.get(sel_band_str)

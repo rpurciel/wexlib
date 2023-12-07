@@ -295,17 +295,55 @@ def total_time_calc(total_time_seconds):
 
 if __name__ == "__main__":
 
-    input_file_path = "/Users/rpurciel/Documents/Voltitude/Test WRF Run Soundings/wrfout_d03_2023-09-13_20:00:00"
+    # input_file_path = "/Users/rpurciel/WeatherExtreme Ltd Dropbox/Ryan Purciel/Voltitude/WRF Tests/TEST3nudging_data/wrfout_d03_2023-09-13_20:00:00"
 
-    input_save_dir = "/Users/rpurciel/Documents/Voltitude/Test WRF Run Soundings"
+    # input_save_dir = "/Users/rpurciel/WeatherExtreme Ltd Dropbox/Ryan Purciel/Voltitude/WRF Tests/TEST3nudging_comparison/Soundings"
 
-    title = "BDM15DS22"
+    # title = "NUDGED_BDM15DS22"
 
-    lat = -26.1555684
+    # lat = -26.0916134
 
-    lon = 16.7492233
+    # lon = 16.7566683
+
+    # _, _, _ = model_sounding_raobcsv(input_file_path, input_save_dir, lat, lon, [], sounding_title=title, debug=True)
+
+    input_file_path = "/Users/rpurciel/WeatherExtreme Ltd Dropbox/Ryan Purciel/Voltitude/WRF Tests/TEST3nudging_data/wrfout_d03_2023-09-15_16:30:00"
+    print(input_file_path)
+
+    input_save_dir = "/Users/rpurciel/WeatherExtreme Ltd Dropbox/Ryan Purciel/Voltitude/WRF Tests/TEST3nudging_comparison/Soundings"
+
+    title = "NUDGED_BDM16DS13"
+
+    lat = -25.941905
+
+    lon = 16.3191816
 
     _, _, _ = model_sounding_raobcsv(input_file_path, input_save_dir, lat, lon, [], sounding_title=title, debug=True)
+
+    # input_file_path = "/Users/rpurciel/WeatherExtreme Ltd Dropbox/Ryan Purciel/Voltitude/WRF Tests/TEST2_data/wrfout_d03_2023-09-13_20:00:00"
+
+    # input_save_dir = "/Users/rpurciel/WeatherExtreme Ltd Dropbox/Ryan Purciel/Voltitude/WRF Tests/TEST3nudging_comparison/Soundings"
+
+    # title = "BDM15DS22"
+
+    # lat = -26.0916134
+
+    # lon = 16.7566683
+
+    # _, _, _ = model_sounding_raobcsv(input_file_path, input_save_dir, lat, lon, [], sounding_title=title, debug=True)
+
+    input_file_path2 = "/Users/rpurciel/WeatherExtreme Ltd Dropbox/Ryan Purciel/Voltitude/WRF Tests/TEST2_data/wrfout_d03_2023-09-15_16:30:00"
+    print(input_file_path)
+
+    input_save_dir = "/Users/rpurciel/WeatherExtreme Ltd Dropbox/Ryan Purciel/Voltitude/WRF Tests/TEST3nudging_comparison/Soundings"
+
+    title = "BDM16DS13"
+
+    lat = -25.941905
+
+    lon = 16.3191816
+
+    _, _, _ = model_sounding_raobcsv(input_file_path2, input_save_dir, lat, lon, [], sounding_title=title, debug=True)
 
 
 

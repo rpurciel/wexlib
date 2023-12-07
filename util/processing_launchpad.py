@@ -1179,7 +1179,7 @@ def processor_selector(command_file_path, **kwargs):
             end_day = int(cmd.end_time.attrs['day'])
             end_hour = int(cmd.end_time.attrs['hour'])
             end_minute = int(cmd.end_time.attrs['minute'])
-
+ 
             points_list = []
             for point in cmd.points.children:
                 if not isinstance(point, NavigableString):
@@ -1286,7 +1286,7 @@ if __name__ == "__main__":
 
     while True:
 
-        cmd_file = "/Users/rpurciel/Documents/Voltitude/Test WRF Run Soundings/Plots/custom sat/command_goes_download.xml"
+        cmd_file = "/Users/rpurciel/Documents/Pack v Duke/HRRR Winds/command_hrrr_download.xml"
 
         print("\nInput a file path to use a command file, or press any key to use default: ")
         print(f"'{cmd_file}'")
