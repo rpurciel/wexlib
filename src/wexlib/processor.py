@@ -27,7 +27,7 @@ import botocore
 import botocore.config as botoconfig
 from tqdm.auto import tqdm
 from tqdm.contrib.concurrent import process_map, thread_map
-import pandas
+import pandas as pd
 
 #import wexlib.util as util
 
@@ -97,18 +97,22 @@ class _ProcessorGeneric():
 
 	def __init__(self, parent_class):
 
-		self.product_name = parent_class.product_name
-		self.long_name = parent_class.long_name
+		parent_class.__init__(self, parent_class.working_dir, parent_class.product_name)
 
-		self.category = parent_class.category
-		self.internal_name = parent_class.internal_name
-		self.product_id = parent_class.product_id
+		# self.product_name = parent_class.product_name
+		# self.long_name = parent_class.long_name
 
-		self.storage_type = parent_class.storage_type
-		self.product_versions = parent_class.product_versions
-		self.storage_dir = parent_class.storage_dir
-		self.file_ext = parent_class.file_ext
-		self.run_period = parent_class.run_period
+		# self.category = parent_class.category
+		# self.internal_name = parent_class.internal_name
+		# self.product_id = parent_class.product_id
+
+		# self.storage_type = parent_class.storage_type
+		# self.product_versions = parent_class.product_versions
+		# self.storage_dir = parent_class.storage_dir
+		# self.file_ext = parent_class.file_ext
+		# self.run_period = parent_class.run_period
+
+		self.catalog = pd.DataFrame(columns=['file', ])
 
 		if self.storage_type == 'aws':
 			self.aws_bucket_id = parent_class.aws_bucket_id
@@ -270,7 +274,7 @@ class ModelProcessor(_ProcessorGeneric):
 		# 	#difference is decided at runtime based on dl_fcst flag above.
 		# 	period = pandas.period_range(start=start_time, end=end_time, freq=self.run_period)
 
-		period = pandas.period_range(start=start_time, end=end_time, freq=self.run_period)
+		period = pd.period_range(start=start_time, end=end_time, freq=self.run_period)
 
 		keys = []
 		file_names = []
@@ -338,15 +342,21 @@ class ModelProcessor(_ProcessorGeneric):
 				file_name = f"{self.internal_name}{product}.{year}{month}{day}{hour}.f{fcst_hr}.{file_uuid}{self.file_ext}"
 				file_names += [file_name]
 
-		print(keys)
-
 		self._create_boto3_session()
 
 		self._aws_download_multithread(self.storage_dir, 
 		                               self.aws_bucket_id, 
 		                               keys, file_names)
 
+		#self._load_into_catalog(file_names,)
+
 		print("All files finished downloading.")
+
+	def _open_file(self):
+		pass
+
+	def svar(self, vars):
+		pass
 
 
 def create(storage_dir_path, product):
