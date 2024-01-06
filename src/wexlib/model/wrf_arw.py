@@ -12,9 +12,9 @@ import pandas as pd
 from wrf import getvar
 from netCDF4 import Dataset
 
-sys.path.insert(0, '/Users/ryanpurciel/Development/wexlib/src')
-sys.path.insert(0, '/Users/rpurciel/Development/wexlib/src') #FOR TESTING ONLY!!!
-import wexlib.util.internal as internal
+# sys.path.insert(0, '/Users/ryanpurciel/Development/wexlib/src')
+# sys.path.insert(0, '/Users/rpurciel/Development/wexlib/src') #FOR TESTING ONLY!!!
+# import wexlib.util.internal as internal
 
 warnings.filterwarnings('ignore')
 
@@ -23,6 +23,29 @@ DEFAULT_LAT = 39.446030
 DEFAULT_LON = -119.771627
 
 DEF_FILE_SKIP_DUPLICATES = True
+
+def str_to_bool(string):
+    if string in ['true', 'True', 'TRUE', 't', 'T', 'yes', 'Yes', 'YES', 'y', 'Y']:
+        return True
+    elif string in ['false', 'False', 'FALSE', 'f', 'F', 'no', 'No', 'NO', 'n', 'N']:
+        return False
+    else:
+        if string == True:
+            return True
+        elif string == False:
+            return False
+        else:
+            return False #fallback to false
+
+def clean_idx(directory):
+    idx_files = glob.glob(os.path.join(directory, "*.idx"))
+
+    if not idx_files:
+        return False
+    else:
+        for file in idx_files:
+            os.remove(file)
+        return True
 
 def plot_plan_view_hrrr(file_path, save_dir, level, variables, points, bbox, **kwargs):
     """
@@ -103,13 +126,13 @@ def model_sounding_raobcsv(file_path, save_path, sounding_lat, sounding_lon, poi
 
     start_time = datetime.now()
 
-    if internal.str_to_bool(kwargs.get('verbose')) == True:
+    if str_to_bool(kwargs.get('verbose')) == True:
         verbose = True
         print("INFO: VERBOSE mode turned ON")
     else:
         verbose = False
 
-    if internal.str_to_bool(kwargs.get('debug')) == True:
+    if str_to_bool(kwargs.get('debug')) == True:
         debug = True
         verbose = True
         print("INFO: DEBUG mode turned ON")
@@ -129,7 +152,7 @@ def model_sounding_raobcsv(file_path, save_path, sounding_lat, sounding_lon, poi
     file_skip_duplicates = DEF_FILE_SKIP_DUPLICATES
     for arg, value in kwargs.items():
         if arg == 'file_skip_duplicates':
-            file_skip_duplicates = internal.str_to_bool(value)
+            file_skip_duplicates = str_to_bool(value)
 
     if verbose and file_skip_duplicates:
         print("IGNORE: Skipping duplicate points turned ON")
