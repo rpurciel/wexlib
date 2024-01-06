@@ -372,11 +372,11 @@ if __name__ == "__main__":
 
     ingest_file_dir = '/Users/rpurciel/Documents/Voltitude/FINAL WRF DATA'
     control_file_dir = '/Users/rpurciel/Documents/Voltitude/FINAL WRF CONTROL DATA'
-    test_file_dir = '/Users/rpurciel/Documents/Voltitude/WRF TEST DATA'
+    # test_file_dir = '/Users/rpurciel/Documents/Voltitude/WRF TEST DATA'
 
     save_dir = '/Users/rpurciel/Documents/Voltitude/Final WRF Comparison/Soundings/TEST/'
 
-    modes = ['TEST']
+    modes = ['CONTROL', 'INGEST']
 
     sondes = [('BDM11DS28', -25.4275, 16.4557499, 'wrfout_d03_2023-09-08_18:00:00'),
               ('BDM11DS29', -25.61189, 16.1760499, 'wrfout_d03_2023-09-08_20:00:00'),
