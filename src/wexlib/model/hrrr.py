@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import urllib.request
 
+sys.path.insert(0, '/Users/ryanpurciel/Development/wexlib/src')
+sys.path.insert(0, '/Users/rpurciel/Development/wexlib/src') #FOR TESTING ONLY!!!
 import wexlib.util.internal as internal
 
 warnings.filterwarnings('ignore')
@@ -359,21 +361,19 @@ def total_time_calc(total_time_seconds):
 
 if __name__ == "__main__":
 
-    input_file_path = "/Users/rpurciel/Documents/Maritime Heli N311MH/HRRR (not ak)/"
+    file = "/Users/rpurciel/Documents/Sims v Honeywell/HRRR Cross Section/Data/hrrr/hrrrconus.2020020815.00.40565727-bd78-471b-bc47-82d762e312d2.00f2d84e-879f-417c-8ad5-8263c983f5a8.grib2"
 
-    input_save_dir = input_file_path
+    input_save_dir = "/Users/rpurciel/Documents/Sims v Honeywell/HRRR Cross Section/Data/"
 
-    lat = 70.649215
+    lats = [34.165614, 34.214602, 34.272687, 34.344034, 34.415874, 34.472265, 34.4663]
 
-    lon = -158.561911
+    lons = [-84.62762222, -84.66053611, -84.67414167, -84.69540556, -84.73435278, -84.77426389, -84.77711667]
 
-    files = sorted(glob.glob(input_file_path + "*.grib2"))
+    names= ["15:07:00 9825", "15:08:00 9550", "15:09:00 11000", "15:10:00 11100", "15:11:001 12300", "15:12:00 15125", "15:12:25 7875"]
 
-    for file in files:
+    for lat, lon, name in zip(lats, lons, names):
 
-        print(file[-12:-9])
-
-        raob_csv_sounding_hrrr(file, input_save_dir, lat, lon, sounding_title=file[-12:-9])
+        model_sounding_raobcsv(file, input_save_dir, lat, lon, [], sounding_title=name, verbose=True)
 
 
 

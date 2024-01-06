@@ -307,18 +307,18 @@ if __name__ == "__main__":
 
     # _, _, _ = model_sounding_raobcsv(input_file_path, input_save_dir, lat, lon, [], sounding_title=title, debug=True)
 
-    input_file_path = "/Users/rpurciel/WeatherExtreme Ltd Dropbox/Ryan Purciel/Voltitude/WRF Tests/TEST3nudging_data/wrfout_d03_2023-09-15_16:30:00"
-    print(input_file_path)
+    # input_file_path = "/Users/rpurciel/WeatherExtreme Ltd Dropbox/Ryan Purciel/Voltitude/WRF Tests/TEST3nudging_data/wrfout_d03_2023-09-15_16:30:00"
+    # print(input_file_path)
 
-    input_save_dir = "/Users/rpurciel/WeatherExtreme Ltd Dropbox/Ryan Purciel/Voltitude/WRF Tests/TEST3nudging_comparison/Soundings"
+    # input_save_dir = "/Users/rpurciel/WeatherExtreme Ltd Dropbox/Ryan Purciel/Voltitude/WRF Tests/TEST3nudging_comparison/Soundings"
 
-    title = "NUDGED_BDM16DS13"
+    # title = "NUDGED_BDM16DS13"
 
-    lat = -25.941905
+    # lat = -25.941905
 
-    lon = 16.3191816
+    # lon = 16.3191816
 
-    _, _, _ = model_sounding_raobcsv(input_file_path, input_save_dir, lat, lon, [], sounding_title=title, debug=True)
+    # _, _, _ = model_sounding_raobcsv(input_file_path, input_save_dir, lat, lon, [], sounding_title=title, debug=True)
 
     # input_file_path = "/Users/rpurciel/WeatherExtreme Ltd Dropbox/Ryan Purciel/Voltitude/WRF Tests/TEST2_data/wrfout_d03_2023-09-13_20:00:00"
 
@@ -332,18 +332,70 @@ if __name__ == "__main__":
 
     # _, _, _ = model_sounding_raobcsv(input_file_path, input_save_dir, lat, lon, [], sounding_title=title, debug=True)
 
-    input_file_path2 = "/Users/rpurciel/WeatherExtreme Ltd Dropbox/Ryan Purciel/Voltitude/WRF Tests/TEST2_data/wrfout_d03_2023-09-15_16:30:00"
-    print(input_file_path)
+    # input_file_path2 = "/Users/rpurciel/WeatherExtreme Ltd Dropbox/Ryan Purciel/Voltitude/WRF Tests/TEST2_data/wrfout_d03_2023-09-15_16:30:00"
+    # print(input_file_path)
 
-    input_save_dir = "/Users/rpurciel/WeatherExtreme Ltd Dropbox/Ryan Purciel/Voltitude/WRF Tests/TEST3nudging_comparison/Soundings"
+    # input_save_dir = "/Users/rpurciel/WeatherExtreme Ltd Dropbox/Ryan Purciel/Voltitude/WRF Tests/TEST3nudging_comparison/Soundings"
 
-    title = "BDM16DS13"
+    # title = "BDM16DS13"
 
-    lat = -25.941905
+    # lat = -25.941905
 
-    lon = 16.3191816
+    # lon = 16.3191816
 
-    _, _, _ = model_sounding_raobcsv(input_file_path2, input_save_dir, lat, lon, [], sounding_title=title, debug=True)
+    # _, _, _ = model_sounding_raobcsv(input_file_path2, input_save_dir, lat, lon, [], sounding_title=title, debug=True)
+
+    ##BDM11DS29
+
+    ingest_file_dir = '/Users/rpurciel/Documents/Voltitude/FINAL WRF DATA'
+    control_file_dir = '/Users/rpurciel/Documents/Voltitude/FINAL WRF CONTROL DATA'
+    test_file_dir = '/Users/rpurciel/Documents/Voltitude/WRF TEST DATA'
+
+    save_dir = '/Users/rpurciel/Documents/Voltitude/Final WRF Comparison/Soundings/TEST/'
+
+    modes = ['TEST']
+
+    sondes = [('BDM11DS28', -25.4275, 16.4557499, 'wrfout_d03_2023-09-08_18:00:00'),
+              ('BDM11DS29', -25.61189, 16.1760499, 'wrfout_d03_2023-09-08_20:00:00'),
+              ('BDM15DS22', -26.0916134, 16.7566683, 'wrfout_d03_2023-09-13_20:00:00'),
+              ('BDM16DS13', -25.941905, 16.3191816, 'wrfout_d03_2023-09-15_17:00:00'),
+              ('BDM13DS02', -25.223895, 17.4897266, 'wrfout_d03_2023-09-18_14:00:00'),
+              ('BDM13DS03', -26.527885, 17.5203299, 'wrfout_d03_2023-09-18_18:00:00'),
+              ('BDM17DS08', -26.733505, 17.2086933, 'wrfout_d03_2023-09-19_18:00:00'),
+              ('BDM17DS14', -37.5441567,15.9044683, 'wrfout_d03_2023-09-20_20:30:00'),
+              ('BDM17DS09', -31.2030967, 16.6450866, 'wrfout_d03_2023-09-20_07:30:00')]
+
+    #sondes = [('BDM11DS29', -25.61189, 16.1760499, 'wrfout_d03_2023-09-09_08:00:00')]
+
+    for sonde in sondes:
+        sonde_id = sonde[0]
+        lat = sonde[1]
+        lon = sonde[2]
+        file_name = sonde[3]
+
+        for mode in modes:
+
+            sonde_name = f"{sonde_id}_{mode}"
+
+            if mode == 'INGEST':
+                file_path = os.path.join(ingest_file_dir, file_name)
+                dest_path = os.path.join(save_dir, mode)
+            elif mode == 'TEST':
+                file_path = os.path.join(test_file_dir, file_name)
+                dest_path = os.path.join(save_dir, mode)
+            else:
+                file_path = os.path.join(control_file_dir, file_name)
+                dest_path = os.path.join(save_dir, mode)
+
+            if not os.path.exists(dest_path):
+                os.makedirs(dest_path)
+
+            _, _, _ = model_sounding_raobcsv(file_path, dest_path, lat, lon, [], sounding_title=sonde_name, debug=True)
+
+
+
+        
+
 
 
 

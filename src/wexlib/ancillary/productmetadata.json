@@ -13,6 +13,10 @@
 	 		"pressure-level-025deg-fallback":"gfs.{year}{month}{day}/{hour}/gfs.t{hour}z.pgrb2.0p25.{fcst_hr}"
 	 	},
 	 	"product_versions":["pressure-level-025deg"],
+	 	"sounding_parameters":{
+	 		"requires_lon_conversion":true
+	 	},
+	 	"data_format":"grib",
 	 	"file_extension":".grib2",
 	 	"run_period":"6h",
 	 	"run_period_sec":"21600"
@@ -31,7 +35,15 @@
 	 		"pressure-level":"hrrr.{year}{month}{day}/{product}/hrrr.t{hour}z.wrfprsf{fcst_hr}.grib2"
 	 	},
 	 	"product_versions":["pressure-level"],
+	 	"sounding_parameters":{
+	 		"requires_lon_conversion": true,
+	 		"var_names":["t", "dpt", "u", "v", "gh"],
+	 		"sfc_var_names":["sp", "orog"],
+	 		"2m_var_names":["t2m", "d2m"],
+	 		"10m_var_names":["u10", "v10"]
+	 	},
 	 	"product_sectors": ["conus", "alaska"],
+	 	"data_format":"grib",
 	 	"file_extension":".grib2",
 	 	"run_period":"1h",
 	 	"run_period_sec":"3600"

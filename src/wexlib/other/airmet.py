@@ -206,7 +206,7 @@ def download(save_dir, year, month, day, **kwargs):
                         if verbose:
                             print("PARSING: Finished parsing airmet group")
                         group_idx += 1
-            
+                        
             main_dict = header_dict.copy()
             main_dict.update({"raw_text" : airmet_raw_text.replace('', '').replace('', ''), "subgroups" : groups_list})
             if verbose:
@@ -748,13 +748,13 @@ def _header_to_dict(header, **kwargs):
 
 if __name__ == "__main__":
 
-    save_dir = "/Users/rpurciel/Documents/Sims v Honeywell/AIRMETS newest"
+    save_dir = "/Users/rpurciel/Documents/Maui Wildfires/AIRMETS"
 
-    year = 2020
+    year = 2023
 
-    month = 2
+    month = 8
 
-    day = 8
+    day = 7
 
     print("starting download")
 
@@ -765,7 +765,7 @@ if __name__ == "__main__":
 
     #selected_states = ["TN", "AL", "GA", "SC", "NC"]
 
-    selected_states = ["GA"]
+    selected_states = ["HI"]
 
     with open(fpath) as file:
         data = file.read()
@@ -773,7 +773,7 @@ if __name__ == "__main__":
     #print(data)
     main_list = json.loads(data)
 
-    save_dir = "/Users/rpurciel/Documents/Sims v Honeywell/AIRMETS newest"
+    save_dir = "/Users/rpurciel/Documents/Maui Wildfires/AIRMETS"
 
     # test_airmet = [{"airmet_id": "WA4Z", "iss_airport": "DFWZ", "iss_time": "102045", "airmet_type": "ZULU", "valid_time": "110300", "conditions": ["ICE", "FRZLVL"], "subgroups": [{"qualifiers": ["AIRMET ICE"], "vors": ["30ENE ASP", "40S ECK", "FWA", "CVG", "HNN", "50S HNN", "50ENE DYR", "20WNW STL", "30SSE BAE", "30ENE ASP"], "states": ["TN", "MO", "WI", "LM", "MI", "IL", "IN", "KY"], "desc": "MOD ICE BTN FRZLVL AND FL220. FRZLVL 080-120. CONDS CONTG BYD 03Z THRU 09Z."}]}]
     airmets = len(main_list)
