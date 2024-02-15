@@ -17,8 +17,8 @@ import wexlib.model.hrrr as hrrr
 import wexlib.model.gfs as gfs
 import wexlib.model.access as access
 #import wexlib.model.wrf as wrf
-import wexlib.sat.goes as goes
-import wexlib.sat.himawari as himawari
+# import wexlib.sat.goes as goes
+# import wexlib.sat.himawari as himawari
 from processing_util import calc_time_remaining, calc_total_time
 
 def processor_selector(command_file_path, **kwargs):
@@ -1286,7 +1286,7 @@ if __name__ == "__main__":
 
     while True:
 
-        cmd_file = "/Users/rpurciel/Documents/Pack v Duke/HRRR Winds/command_hrrr_download.xml"
+        cmd_file = "/Users/rpurciel/Documents/Bell Kenya/ERA5/command_era5_download.xml"
 
         print("\nInput a file path to use a command file, or press any key to use default: ")
         print(f"'{cmd_file}'")

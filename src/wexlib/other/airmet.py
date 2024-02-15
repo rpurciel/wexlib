@@ -123,6 +123,31 @@ def download(save_dir, year, month, day, **kwargs):
                 return 0, elapsed_time.total_seconds(), e
 
             airmet_raw_text = airmet_request.text
+#             airmet_raw_text = '''WAUS46 KKCI 131445
+# WA6Z
+# SFOZ WA 131445
+# AIRMET ZULU UPDT 2 FOR ICE AND FRZLVL VALID UNTIL 132100
+# .
+# AIRMET ICE...CA AND CSTL WTRS
+# FROM 60WNW OAL TO EED TO 60S TRM TO 150SW MZB TO 60WSW RZS TO
+# 60WNW OAL
+# MOD ICE BTN FRZLVL AND FL200. FRZLVL SFC-090. CONDS CONTG BYD 21Z
+# THRU 03Z.
+# .
+# AIRMET ICE...WA OR CA AND CSTL WTRS
+# FROM 50WSW YXC TO 30WSW DNJ TO 30SSW DSD TO 20N OED TO 130WNW FOT
+# TO 100WNW ONP TO 140W TOU TO 50WSW YXC
+# MOD ICE BTN FRZLVL AND 150. FRZLVL SFC-060. CONDS CONTG BYD 21Z
+# THRU 03Z.
+# .
+# FRZLVL...RANGING FROM SFC-105 ACRS AREA
+#   MULT FRZLVL BLW 080 BOUNDED BY 50NNW GEG-50SSW JAC-30SE DTA-
+#      50SW ELY-60ENE FMG-50ENE OED-40SSW EUG-80SW EUG-100W ONP-
+#      50NNW GEG
+#   SFC ALG HUH-YKM-40WSW PDT-40NNW LKV-70SSE LKV
+#   040 ALG 160NW FOT-40NE EUG-50NNE DSD-80SW BKE
+#   080 ALG 140WSW FOT-80SW FOT-80SSE OED-20SW FMG
+#   080 ALG 20SW BTY-30NW LAX-40SW LAX-120SW MZB'''
             all_airmets_raw_text += [airmet_raw_text]
             if debug:
                 print("DEBUG: Raw AIRMET: \n", airmet_raw_text)
@@ -227,7 +252,7 @@ def download(save_dir, year, month, day, **kwargs):
         file_object.write(text)
     file_object.close()
 
-    file_name = f"AllAIRMETS_{date.replace('-', '')}.txt"
+    file_name = f"AllAIRMETS_{date.replace('-', '')}.json"
     dest_path = os.path.join(save_dir, file_name)
 
     file_object = open(dest_path, "w")
@@ -626,23 +651,29 @@ def _pop_states(text, **kwargs):
         
     states_text = states_text.replace("#", " ").lstrip()
         
-    #print(states_text)
+    print(states_text)
+
+    trailer_waters_match = states_text.find("WTRS$UPDT") #Found a case where "AND CSTL WTRS$UPDT" was included. This will get rid of that.
+    if trailer_waters_match != -1:
+        states_text = states_text[:trailer_waters_match+4]
+    
+    trailer_match = states_text.find("$UPDT") #Found a case where "$UPDT" was included at the end. This will get rid of that
+    if trailer_match != -1:
+        states_text = states_text[:trailer_match]
         
     states_only_match = re.match(r"([A-Z]{2}\s)*[A-Z]{2}$", states_text) #Matches only if states block is only state abbrs (e.g. [CA NV OR ...])
     #coastal_waters_match = re.match(r"((AND\s)*CSTL\sWTRS)", states_text) #Matches only if states block includes "and coastal waters"
     coastal_waters_match = states_text.find("CSTL")
-    trailer_match = states_text.find("$UPDT") #Found a case where "AND CSTL WTRS$UPDT" was included. This will get rid of that.
     if coastal_waters_match == -1:
         coastal_waters_match = False
     else:
         coastal_waters_match = True
         
     
-    #print("TRAILER:", trailer_match)
-    if trailer_match != -1:
-        states_text = states_text[:trailer_match]
+    # #print("TRAILER:", trailer_match)
 
-    # print(states_text)
+
+    print(states_text)
     # print("STATES:", bool(states_only_match), states_only_match)
     # print("WATERS:", bool(coastal_waters_match), coastal_waters_match)
     if states_only_match:
@@ -651,7 +682,7 @@ def _pop_states(text, **kwargs):
         no_state_text = text[:start_of_block] + text[end_of_block:]
     elif coastal_waters_match: #If states doesnt match but coastal waters does assume its a block of states since coastal waters would only be with locations anyway
         # print("NO BUT WATERS")
-        #print(states_text)
+        print(states_text)
         states_text = states_text.replace("CSTL#WTRS", "CSTL_WTRS").replace("CSTL WTRS", "CSTL_WTRS").replace("AND CSTL_WTRS", "CSTL_WTRS")
         states = states_text.split(" ")
         states[states.index("CSTL_WTRS")] = "CSTL WTRS"
@@ -703,7 +734,10 @@ def _header_to_dict(header, **kwargs):
     airmet_valid_time_match = re.search(r"VALID\sUNTIL\s\d{6}", header)
     
     airmet_id = header[airmet_id_match.start():airmet_id_match.end()].replace("#", "").strip()
-    airmet_airport = header[airmet_airport_match.start():airmet_airport_match.end()].replace("#&", "").strip()
+    try:
+        airmet_airport = header[airmet_airport_match.start():airmet_airport_match.end()].replace("#&", "").strip()
+    except:
+        airmet_airport = ''
     airmet_iss_time = header[airmet_iss_time_match.start():airmet_iss_time_match.end()].replace("#", "").strip()
     airmet_type = header[airmet_type_match.start():airmet_type_match.end()].replace("#AIRMET ", "").strip()
     airmet_valid_time = header[airmet_valid_time_match.start():airmet_valid_time_match.end()].replace("VALID UNTIL ", "").strip()
@@ -748,24 +782,24 @@ def _header_to_dict(header, **kwargs):
 
 if __name__ == "__main__":
 
-    save_dir = "/Users/rpurciel/Documents/Maui Wildfires/AIRMETS"
+    save_dir = "//Users/rpurciel/Documents/Cessna 208B Idaho/AIRMETs"
 
-    year = 2023
+    year = 2022
 
-    month = 8
+    month = 4
 
-    day = 7
+    day = 13
 
     print("starting download")
 
-    _, _, fpath = download(save_dir, year, month, day, verbose=True)
+    _, _, fpath = download(save_dir, year, month, day, verbose=True, debug=True)
 
 
     print("done")
 
     #selected_states = ["TN", "AL", "GA", "SC", "NC"]
 
-    selected_states = ["HI"]
+    selected_states = ["ID"]
 
     with open(fpath) as file:
         data = file.read()
@@ -773,7 +807,7 @@ if __name__ == "__main__":
     #print(data)
     main_list = json.loads(data)
 
-    save_dir = "/Users/rpurciel/Documents/Maui Wildfires/AIRMETS"
+    save_dir = "/Users/rpurciel/Documents/Cessna 208B Idaho/AIRMETs"
 
     # test_airmet = [{"airmet_id": "WA4Z", "iss_airport": "DFWZ", "iss_time": "102045", "airmet_type": "ZULU", "valid_time": "110300", "conditions": ["ICE", "FRZLVL"], "subgroups": [{"qualifiers": ["AIRMET ICE"], "vors": ["30ENE ASP", "40S ECK", "FWA", "CVG", "HNN", "50S HNN", "50ENE DYR", "20WNW STL", "30SSE BAE", "30ENE ASP"], "states": ["TN", "MO", "WI", "LM", "MI", "IL", "IN", "KY"], "desc": "MOD ICE BTN FRZLVL AND FL220. FRZLVL 080-120. CONDS CONTG BYD 03Z THRU 09Z."}]}]
     airmets = len(main_list)
@@ -796,7 +830,7 @@ if __name__ == "__main__":
         if not subgroups:
             subgroups = []
 
-        _, _, _, = plot_kmz(save_dir, subgroups, airmet_type, airmet_id, airmet_raw_text, valid_time, iss_time, filter_by_states=selected_states, verbose=True)
+        _, _, _, = plot_kmz(save_dir, subgroups, airmet_type, airmet_id, airmet_raw_text, valid_time, iss_time, filter_by_states=selected_states, debug=True)
         index += 1
 
 

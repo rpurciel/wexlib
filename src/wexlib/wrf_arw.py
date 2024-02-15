@@ -370,11 +370,11 @@ if __name__ == "__main__":
 
     ##BDM11DS29
 
-    ingest_file_dir = '/Users/rpurciel/Documents/Voltitude/FINAL WRF DATA'
-    control_file_dir = '/Users/rpurciel/Documents/Voltitude/FINAL WRF CONTROL DATA'
+    ingest_file_dir = '/Users/rpurciel/Documents/Voltitude/FINAL INGEST NO ETA'
+    control_file_dir = '/Users/rpurciel/Documents/Voltitude/FINAL CONTROL NO ETA'
     # test_file_dir = '/Users/rpurciel/Documents/Voltitude/WRF TEST DATA'
 
-    save_dir = '/Users/rpurciel/Documents/Voltitude/Final WRF Comparison/Soundings/TEST/'
+    save_dir = '/Users/rpurciel/Documents/Voltitude/Final WRF Comparison/Soundings/TEST NO ETA/'
 
     modes = ['CONTROL', 'INGEST']
 
@@ -413,7 +413,10 @@ if __name__ == "__main__":
             if not os.path.exists(dest_path):
                 os.makedirs(dest_path)
 
-            _, _, _ = model_sounding_raobcsv(file_path, dest_path, lat, lon, [], sounding_title=sonde_name, debug=True)
+            try:
+                _, _, _ = model_sounding_raobcsv(file_path, dest_path, lat, lon, [], sounding_title=sonde_name, debug=True)
+            except Exception as e:
+                print(e)
 
 
 
